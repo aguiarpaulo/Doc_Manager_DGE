@@ -1,0 +1,44 @@
+{
+  "node_id": "NODE-017",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/backup_postgres.py passed",
+      "satisfies": "artefato: rotina de backup diario do PostgreSQL (pg_dump) executavel e documentada",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/backup_postgres.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T20:06:44.980Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/smoke_minio_persistence.py passed",
+      "satisfies": "smoke: arquivos MinIO em volume persistente sobrevivem a recriacao do container",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/smoke_minio_persistence.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T20:06:52.577Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/restore_postgres.py passed",
+      "satisfies": "artefato: procedimento de restauracao do backup documentado e testado",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/restore_postgres.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T20:06:58.043Z"
+    }
+  ]
+}

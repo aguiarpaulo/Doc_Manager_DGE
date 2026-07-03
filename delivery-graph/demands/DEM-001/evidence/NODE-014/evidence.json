@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-014",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_observability.py -k ok_when_dependencies -q passed",
+      "satisfies": "pytest: /health retorna ok quando DB e MinIO respondem",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_observability.py",
+        "-k",
+        "ok_when_dependencies",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:30:20.152Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_observability.py -k unhealthy_when -q passed",
+      "satisfies": "pytest: /health reporta unhealthy quando uma dependencia esta indisponivel",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_observability.py",
+        "-k",
+        "unhealthy_when",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:30:26.193Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_observability.py -k structured_json -q passed",
+      "satisfies": "pytest: logs sao emitidos em formato estruturado (structlog)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_observability.py",
+        "-k",
+        "structured_json",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:30:32.258Z"
+    }
+  ]
+}

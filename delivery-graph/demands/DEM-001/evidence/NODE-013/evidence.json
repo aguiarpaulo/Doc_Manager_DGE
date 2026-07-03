@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-013",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_mfa.py -k generates_secret -q passed",
+      "satisfies": "pytest: ativar MFA gera segredo TOTP",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_mfa.py",
+        "-k",
+        "generates_secret",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:27:08.492Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_mfa.py -k denied_without -q passed",
+      "satisfies": "pytest: com MFA ativo, login sem codigo valido e negado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_mfa.py",
+        "-k",
+        "denied_without",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:27:15.978Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_mfa.py -k accepted_with -q passed",
+      "satisfies": "pytest: com MFA ativo, login com codigo TOTP valido e aceito",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_mfa.py",
+        "-k",
+        "accepted_with",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:27:23.229Z"
+    }
+  ]
+}

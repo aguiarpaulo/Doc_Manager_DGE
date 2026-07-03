@@ -1,0 +1,44 @@
+{
+  "node_id": "NODE-016",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/smoke_health.py passed",
+      "satisfies": "smoke: docker compose up sobe API, PostgreSQL e MinIO conectados",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/smoke_health.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:56:05.876Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/smoke_health.py passed",
+      "satisfies": "smoke: API alcanca DB e MinIO via variaveis de ambiente e /health passa",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/smoke_health.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:56:09.177Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe scripts/check_no_hardcoded_secrets.py passed",
+      "satisfies": "revisao: segredos/credenciais vem de env, nada hardcoded (ver GAP-002 sobre HTTPS)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "scripts/check_no_hardcoded_secrets.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:56:12.025Z"
+    }
+  ]
+}

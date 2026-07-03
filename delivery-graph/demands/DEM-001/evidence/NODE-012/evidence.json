@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-012",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_password_reset.py -k without_leaking -q passed",
+      "satisfies": "pytest: solicitar reset gera token de uso unico com expiracao sem revelar se o e-mail existe",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_password_reset.py",
+        "-k",
+        "without_leaking",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:23:33.144Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_password_reset.py -k resets_and_used or expired_token -q passed",
+      "satisfies": "pytest: token valido troca a senha; token usado/expirado e rejeitado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_password_reset.py",
+        "-k",
+        "resets_and_used or expired_token",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:23:40.714Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_password_reset.py -k bcrypt_and_token -q passed",
+      "satisfies": "pytest: nova senha gravada em bcrypt e token invalidado",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_password_reset.py",
+        "-k",
+        "bcrypt_and_token",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:23:47.882Z"
+    }
+  ]
+}

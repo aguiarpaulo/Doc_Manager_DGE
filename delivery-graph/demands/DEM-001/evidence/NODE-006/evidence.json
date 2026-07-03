@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-006",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_uploads.py -k disallowed_type or oversized -q passed",
+      "satisfies": "pytest: tipo nao permitido ou arquivo acima de 50MB e rejeitado",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_uploads.py",
+        "-k",
+        "disallowed_type or oversized",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:54:18.076Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_uploads.py -k duplicate_hash -q passed",
+      "satisfies": "pytest: hash SHA-256 identico na mesma obra e sinalizado como duplicado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_uploads.py",
+        "-k",
+        "duplicate_hash",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:54:27.069Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_uploads.py -k persists_object -q passed",
+      "satisfies": "pytest: upload PDF/PNG/JPG valido persiste objeto no MinIO e metadados",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_uploads.py",
+        "-k",
+        "persists_object",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:54:53.061Z"
+    }
+  ]
+}

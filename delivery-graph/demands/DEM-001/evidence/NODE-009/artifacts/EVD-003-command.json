@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/pytest.exe",
+    "tests/test_audit.py",
+    "-k",
+    "no_mutation",
+    "-q"
+  ],
+  "exit_code": 0,
+  "stdout": ".                                                                        [100%]\r\n============================== warnings summary ===============================\r\n.venv\\Lib\\site-packages\\fastapi\\testclient.py:1\r\n  C:\\Projects\\dge\\Doc_Manager_DGE\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\r\n    from starlette.testclient import TestClient as TestClient  # noqa\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n",
+  "stderr": "",
+  "created_at": "2026-07-03T19:09:18.329Z",
+  "artifacts": []
+}

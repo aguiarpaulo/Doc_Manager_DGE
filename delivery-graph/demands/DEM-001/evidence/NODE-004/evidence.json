@@ -1,0 +1,69 @@
+{
+  "node_id": "NODE-004",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_obras.py -k creates_and_edits or non_admin -q passed",
+      "satisfies": "pytest: admin cria/edita obra; nao-admin recebe 403",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_obras.py",
+        "-k",
+        "creates_and_edits or non_admin",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:44:38.300Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_obras.py -k assigns_and_unassigns -q passed",
+      "satisfies": "pytest: admin atribui/remove obra de um usuario",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_obras.py",
+        "-k",
+        "assigns_and_unassigns",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:44:45.922Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_obras.py -k only_see_assigned -q passed",
+      "satisfies": "pytest: engenheiro/financeiro so acessam obras atribuidas (403/404 fora do escopo)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_obras.py",
+        "-k",
+        "only_see_assigned",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:44:54.086Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_obras.py -k see_all_obras -q passed",
+      "satisfies": "pytest: diretor e admin acessam todas as obras independentemente de atribuicao",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_obras.py",
+        "-k",
+        "see_all_obras",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:45:01.654Z"
+    }
+  ]
+}

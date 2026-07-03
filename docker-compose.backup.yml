@@ -1,0 +1,26 @@
+# Daily PostgreSQL backup overlay.
+# Run alongside the main stack:
+#   docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+# Writes a timestamped dump to ./backups every 24h and prunes dumps older than 14 days.
+services:
+  backup:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        while true; do
+          ts=$$(date -u +%Y%m%d_%H%M%S)
+          pg_dump -h postgres -U ${POSTGRES_USER:-ged} ${POSTGRES_DB:-ged} > /backups/ged_$$ts.sql \
+            && echo "backup written: ged_$$ts.sql" \
+            || echo "backup FAILED at $$ts"
+          find /backups -name 'ged_*.sql' -mtime +14 -delete
+          sleep 86400
+        done

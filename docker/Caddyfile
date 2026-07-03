@@ -1,0 +1,7 @@
+# HTTPS termination for the GED API (GAP-002 default: Caddy with automatic TLS).
+# With a real {$CADDY_DOMAIN}, Caddy provisions a Let's Encrypt certificate automatically.
+# For localhost it issues an internal self-signed certificate.
+{$CADDY_DOMAIN} {
+	reverse_proxy api:8000
+	encode gzip
+}

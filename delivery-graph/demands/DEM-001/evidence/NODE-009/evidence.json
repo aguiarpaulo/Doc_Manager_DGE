@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-009",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_audit.py -k are_audited -q passed",
+      "satisfies": "pytest: cada acao relevante gera registro com autor, acao, alvo e timestamp",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_audit.py",
+        "-k",
+        "are_audited",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:09:04.404Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_audit.py -k chronological -q passed",
+      "satisfies": "pytest: historico de um documento e consultavel em ordem cronologica",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_audit.py",
+        "-k",
+        "chronological",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:09:11.584Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_audit.py -k no_mutation -q passed",
+      "satisfies": "pytest: registros de auditoria nao podem ser editados/apagados via API",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_audit.py",
+        "-k",
+        "no_mutation",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T19:09:18.332Z"
+    }
+  ]
+}

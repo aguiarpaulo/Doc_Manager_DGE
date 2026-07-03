@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "scripts/backup_postgres.py"
+  ],
+  "exit_code": 0,
+  "stdout": "BACKUP OK: C:\\Projects\\dge\\Doc_Manager_DGE\\backups\\ged_20260703_200644.sql (11373 bytes)\r\n",
+  "stderr": "",
+  "created_at": "2026-07-03T20:06:44.976Z",
+  "artifacts": []
+}

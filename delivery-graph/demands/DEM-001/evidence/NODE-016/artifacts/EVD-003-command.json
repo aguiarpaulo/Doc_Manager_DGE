@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "scripts/check_no_hardcoded_secrets.py"
+  ],
+  "exit_code": 0,
+  "stdout": "OK: secrets are env-driven; nothing hardcoded in compose\r\n",
+  "stderr": "",
+  "created_at": "2026-07-03T19:56:12.022Z",
+  "artifacts": []
+}

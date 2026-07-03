@@ -1,0 +1,809 @@
+{
+  "graph": {
+    "id": "DGE-001",
+    "title": "GED DGE — Gestão Eletrônica de Documentos para Obras",
+    "status": "draft",
+    "source": "local",
+    "created_at": "2026-07-03T17:52:13.967Z",
+    "updated_at": "2026-07-03T20:07:01.280Z",
+    "rev": 77
+  },
+  "demands": [
+    {
+      "id": "DEM-001",
+      "title": "GED com workflow de aprovação para gestão de documentos de obras",
+      "source": "Demanda direta do usuário (Paulo), 2026-07-03",
+      "outcome": "Sistema em produção real numa empresa; todo o baseline de segurança (bcrypt, JWT com refresh token, HTTPS, auditoria de toda ação, backup diário do banco e redundância de arquivos no MinIO) é obrigatório.",
+      "constraints": [
+        "Stack: Python",
+        "FastAPI",
+        "PostgreSQL",
+        "MinIO (self-hosted via Docker)",
+        "Docker Compose",
+        "JWT",
+        "structlog + health check. Ferramentas: ruff e pytest.",
+        "Controle de acesso: relação usuário↔obra N:N + papel. Admin/Diretor veem todas as obras; Engenheiro/Financeiro só as atribuídas.",
+        "A API é a superfície testada automaticamente (pytest); o Streamlit é fino e verificado manualmente."
+      ],
+      "non_goals": [
+        "Frontend Next.js/React polido — a UI do v1 é mínima em Streamlit; um frontend próprio fica como demanda futura.",
+        "Storage genérico de arquivos — apenas PDF e imagens (PNG/JPG) de documentos de obra são aceitos.",
+        "MFA obrigatório para todos — MFA é opt-in via TOTP no v1.",
+        "Alta disponibilidade / clustering multi-nó — deploy é Docker Compose num host."
+      ],
+      "problem": "Uma construtora precisa centralizar documentos (contratos, projetos, notas fiscais, licenças, laudos) espalhados por obra, com controle de quem acessa o quê, um fluxo formal de aprovação e trilha de auditoria. Hoje isso é feito de forma dispersa (arquivos soltos/e-mail) sem versionamento, controle de acesso por obra nem histórico confiável. Repositório greenfield: não há código a reutilizar (survey confirmou apenas README e .gitignore)."
+    }
+  ],
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve autenticar usuários por e-mail/senha, com senhas armazenadas via bcrypt, emitindo um JWT de acesso de curta duração e um refresh token para renovação.",
+      "priority": "must",
+      "acceptance": [
+        "Login com credenciais válidas retorna access token + refresh token",
+        "Login com senha inválida retorna 401 e não vaza se o e-mail existe",
+        "Senha é persistida como hash bcrypt",
+        "nunca em texto puro",
+        "Refresh token válido gera novo access token; refresh inválido/expirado retorna 401"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest cobrindo login válido",
+          "inválido",
+          "hash bcrypt e ciclo de refresh (TestClient)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-002",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve permitir recuperação de senha via fluxo esqueci-minha-senha baseado em token de uso único e expiração, entregue por e-mail.",
+      "priority": "should",
+      "acceptance": [
+        "Solicitar reset gera token de uso único com expiração e não revela se o e-mail existe",
+        "Token válido permite definir nova senha; token usado/expirado é rejeitado",
+        "Nova senha é gravada como hash bcrypt e invalida o token"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest do fluxo de reset: geração",
+          "expiração",
+          "uso único e troca efetiva de senha"
+        ]
+      }
+    },
+    {
+      "id": "REQ-003",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve oferecer MFA via TOTP que cada usuário pode ativar opcionalmente; quando ativo, o login exige o código TOTP além da senha.",
+      "priority": "should",
+      "acceptance": [
+        "Usuário ativa MFA e recebe segredo/QR TOTP",
+        "Com MFA ativo",
+        "login sem código válido é negado",
+        "Com MFA ativo",
+        "login com código TOTP válido é aceito"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest cobrindo ativação",
+          "login negado sem código e aceito com código (TOTP simulado)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-004",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve gerir usuários com um dos papéis Administrador, Diretor, Engenheiro ou Financeiro; apenas Administrador cria/edita/desativa usuários.",
+      "priority": "must",
+      "acceptance": [
+        "Admin cria usuário com papel; não-admin recebe 403 ao tentar",
+        "Papel inválido é rejeitado na validação",
+        "Usuário desativado não consegue autenticar"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de CRUD de usuários com checagem de papel e 403 para não-admin"
+        ]
+      }
+    },
+    {
+      "id": "REQ-005",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve gerir obras (criar/listar/editar); apenas Administrador cria e edita obras.",
+      "priority": "must",
+      "acceptance": [
+        "Admin cria obra; não-admin recebe 403 ao criar/editar",
+        "Listagem de obras respeita o escopo de acesso do usuário"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de CRUD de obras com checagem de papel e escopo na listagem"
+        ]
+      }
+    },
+    {
+      "id": "REQ-006",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve suportar atribuição N:N entre usuários e obras e aplicar esse escopo: Administrador e Diretor acessam todas as obras; Engenheiro e Financeiro apenas as obras atribuídas.",
+      "priority": "must",
+      "acceptance": [
+        "Admin atribui/remove obra de um usuário",
+        "Engenheiro/Financeiro só enxergam documentos e obras atribuídas; acesso a obra não atribuída retorna 403/404",
+        "Diretor e Admin enxergam todas as obras independentemente de atribuição"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest do enforcement de escopo por papel em endpoints de obra e documento"
+        ]
+      }
+    },
+    {
+      "id": "REQ-007",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve armazenar documentos com metadados id, nome, obra_id, categoria, status, criado_por, criado_em, aceitando as categorias Contrato, Projeto, Nota Fiscal, Licença, Laudo e Outros.",
+      "priority": "must",
+      "acceptance": [
+        "Criar documento persiste todos os campos e associa a uma obra existente",
+        "Categoria fora da lista permitida é rejeitada",
+        "Documento nasce com status Enviado e criado_por igual ao usuário autenticado"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de criação/leitura de documento validando campos e categorias"
+        ]
+      }
+    },
+    {
+      "id": "REQ-008",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve fazer upload do arquivo para o MinIO registrando metadados tamanho, tipo, hash SHA-256 e versão; aceitando apenas PDF/PNG/JPG até ~50MB e tratando hash idêntico na mesma obra como duplicado.",
+      "priority": "must",
+      "acceptance": [
+        "Upload de PDF/PNG/JPG válido persiste objeto no MinIO e metadados (tamanho",
+        "tipo",
+        "hash",
+        "versão)",
+        "Arquivo com tipo não permitido ou acima de 50MB é rejeitado",
+        "Upload com hash SHA-256 idêntico a arquivo existente na mesma obra é sinalizado como duplicado"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de upload com MinIO (container/fake) cobrindo tipo",
+          "tamanho e duplicado"
+        ]
+      }
+    },
+    {
+      "id": "REQ-009",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve versionar documentos: cada re-upload cria uma nova versão (v2, v3...), mantém as versões anteriores no MinIO, retorna o documento ao status Enviado e trata aprovação por versão.",
+      "priority": "must",
+      "acceptance": [
+        "Re-upload incrementa a versão e preserva o objeto da versão anterior",
+        "Nova versão reseta o status para Enviado",
+        "Aprovação registrada refere-se à versão aprovada"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de versionamento: incremento",
+          "retenção da versão antiga e reset de status"
+        ]
+      }
+    },
+    {
+      "id": "REQ-010",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve mover documentos pelo fluxo Enviado, Em análise, Aprovado ou Rejeitado, permitindo aprovar/rejeitar apenas a Administrador e Diretor, e impedindo que um usuário aprove um documento que ele mesmo enviou.",
+      "priority": "must",
+      "acceptance": [
+        "Diretor/Admin transitam para Em análise e Aprovado/Rejeitado; Engenheiro/Financeiro recebem 403 ao aprovar",
+        "Usuário não pode aprovar documento cujo criado_por é ele mesmo",
+        "Transições inválidas de status são rejeitadas"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest da máquina de estados e das regras de permissão e self-approval"
+        ]
+      }
+    },
+    {
+      "id": "REQ-011",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve registrar histórico/auditoria imutável de toda ação relevante — login, upload, download, aprovação, rejeição e exclusão — com autor, ação, alvo e timestamp.",
+      "priority": "must",
+      "acceptance": [
+        "Cada ação relevante gera um registro de auditoria com autor",
+        "ação",
+        "alvo e timestamp",
+        "Histórico de um documento pode ser consultado em ordem cronológica",
+        "Registros de auditoria não podem ser editados/apagados via API"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest verificando emissão de eventos de auditoria para cada tipo de ação"
+        ]
+      }
+    },
+    {
+      "id": "REQ-012",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve permitir busca de documentos por nome, categoria, obra, status e usuário, respeitando o escopo de acesso do solicitante.",
+      "priority": "must",
+      "acceptance": [
+        "Busca filtra corretamente por cada critério e por combinações",
+        "Resultados nunca incluem documentos de obras fora do escopo do usuário",
+        "Busca sem resultados retorna lista vazia (não erro)"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de busca por cada filtro e do recorte por escopo de acesso"
+        ]
+      }
+    },
+    {
+      "id": "REQ-013",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve implementar exclusão de documentos como soft-delete restrito ao Administrador, com o evento registrado na auditoria.",
+      "priority": "must",
+      "acceptance": [
+        "Apenas Admin exclui; demais papéis recebem 403",
+        "Exclusão marca o documento como removido (soft-delete) sem apagar o objeto/versões",
+        "Documento removido não aparece em listagens/buscas padrão e o evento é auditado"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest de soft-delete: permissão",
+          "ocultação em listagens e registro de auditoria"
+        ]
+      }
+    },
+    {
+      "id": "REQ-014",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve expor observabilidade via logging estruturado (structlog) e um endpoint de health check que reporte o estado de dependências (banco e MinIO).",
+      "priority": "should",
+      "acceptance": [
+        "Endpoint de health retorna status ok quando banco e MinIO respondem",
+        "Health reporta unhealthy quando uma dependência está indisponível",
+        "Logs são emitidos em formato estruturado (structlog)"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste pytest do endpoint de health (ok e dependência caída)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-015",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve ser implantável via Docker Compose subindo API, PostgreSQL e MinIO de forma integrada.",
+      "priority": "must",
+      "acceptance": [
+        "docker compose up sobe API",
+        "PostgreSQL e MinIO conectados",
+        "API alcança banco e MinIO usando configuração por variáveis de ambiente",
+        "Configuração sensível (segredos/credenciais) vem de env",
+        "não hardcoded"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Verificação de que o compose sobe os serviços e o health check passa (smoke)"
+        ]
+      }
+    },
+    {
+      "id": "REQ-016",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve garantir durabilidade: backup diário do banco PostgreSQL e redundância dos arquivos do MinIO via volumes Docker persistentes.",
+      "priority": "must",
+      "acceptance": [
+        "Existe rotina de backup diário do PostgreSQL (ex.: pg_dump agendado) documentada e executável",
+        "Arquivos do MinIO residem em volume persistente que sobrevive a recriação do container",
+        "Procedimento de restauração do backup está documentado e testável"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Roteiro/teste verificando geração de backup e persistência de dados após recriar containers"
+        ]
+      }
+    },
+    {
+      "id": "REQ-017",
+      "demand_id": "DEM-001",
+      "statement": "O sistema deve incluir uma UI minima em Streamlit que permita login e exercitar os fluxos principais (listar/filtrar documentos, upload, aprovar/rejeitar, ver historico) consumindo a API.",
+      "priority": "should",
+      "acceptance": [
+        "Usuario faz login pela UI e recebe sessao autenticada contra a API",
+        "UI lista documentos respeitando o escopo do usuario e permite upload/aprovacao/busca"
+      ],
+      "validation": {
+        "method": "manual-review",
+        "required_evidence": [
+          "Verificacao manual (smoke) dos fluxos principais na UI Streamlit contra a API"
+        ]
+      }
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "type": "dependency",
+      "severity": "major",
+      "question": "Qual provedor/servidor SMTP entregará os e-mails do fluxo esqueci-minha-senha (e futuramente recuperação de MFA)? Sem isso, o reset roda em modo dev (token via log) mas não envia e-mail real em produção.",
+      "blocks": [
+        "REQ-002"
+      ],
+      "resolution": null
+    },
+    {
+      "id": "GAP-002",
+      "type": "dependency",
+      "severity": "major",
+      "question": "Como será a terminação HTTPS em produção com Docker Compose (reverse proxy tipo nginx/Caddy/Traefik + certificado)? O baseline exige HTTPS mas o mecanismo não foi definido.",
+      "blocks": [
+        "REQ-015"
+      ],
+      "resolution": null
+    }
+  ],
+  "tracks": [
+    {
+      "id": "TRK-foundation",
+      "title": "Foundation"
+    },
+    {
+      "id": "TRK-implementation",
+      "title": "Implementation"
+    },
+    {
+      "id": "TRK-release",
+      "title": "Release"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "NODE-001",
+      "title": "Scaffold do projeto (FastAPI, config por env, SQLAlchemy+Alembic, structlog, ruff/pytest)",
+      "type": "implementation",
+      "track": "TRK-foundation",
+      "requirement_ids": [
+        "REQ-015"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "ruff check passa sem erros",
+          "pytest executa a suite com sucesso (mesmo minima)",
+          "app FastAPI inicia e emite log estruturado (structlog)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-001/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-002",
+      "title": "Autenticacao: bcrypt, login, JWT access+refresh",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-001"
+      ],
+      "depends_on": [
+        "NODE-001"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: login valido retorna access+refresh token",
+          "pytest: senha invalida retorna 401 sem revelar se o e-mail existe",
+          "pytest: senha persistida como hash bcrypt",
+          "pytest: refresh valido gera novo access; invalido/expirado retorna 401"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-002/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-003",
+      "title": "Usuarios e papeis: CRUD com RBAC (Admin/Diretor/Engenheiro/Financeiro), admin-only",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-004"
+      ],
+      "depends_on": [
+        "NODE-002"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: admin cria usuario com papel; nao-admin recebe 403",
+          "pytest: papel invalido e rejeitado na validacao",
+          "pytest: usuario desativado nao consegue autenticar"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-003/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-004",
+      "title": "Obras, atribuicao N:N usuario-obra e enforcement de escopo por papel",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-005",
+        "REQ-006"
+      ],
+      "depends_on": [
+        "NODE-003"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: admin cria/edita obra; nao-admin recebe 403",
+          "pytest: admin atribui/remove obra de um usuario",
+          "pytest: engenheiro/financeiro so acessam obras atribuidas (403/404 fora do escopo)",
+          "pytest: diretor e admin acessam todas as obras independentemente de atribuicao"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-004/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-005",
+      "title": "Documentos: metadados (id, nome, obra_id, categoria, status, criado_por, criado_em) e categorias",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-007"
+      ],
+      "depends_on": [
+        "NODE-004"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: criar documento persiste campos e associa a obra existente",
+          "pytest: categoria fora da lista permitida e rejeitada",
+          "pytest: documento nasce com status Enviado e criado_por = usuario autenticado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-005/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-006",
+      "title": "Upload para MinIO com metadados (tamanho, tipo, hash SHA-256, versao) e validacao tipo/tamanho/duplicado",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-008"
+      ],
+      "depends_on": [
+        "NODE-005"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: upload PDF/PNG/JPG valido persiste objeto no MinIO e metadados",
+          "pytest: tipo nao permitido ou arquivo acima de 50MB e rejeitado",
+          "pytest: hash SHA-256 identico na mesma obra e sinalizado como duplicado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-006/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-007",
+      "title": "Versionamento de documentos: nova versao por re-upload, retencao das anteriores, reset de status",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-009"
+      ],
+      "depends_on": [
+        "NODE-006"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: re-upload incrementa versao e preserva o objeto da versao anterior",
+          "pytest: nova versao reseta o status para Enviado",
+          "pytest: aprovacao registrada refere-se a versao aprovada"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-007/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-008",
+      "title": "Fluxo de aprovacao (Enviado/Em analise/Aprovado/Rejeitado) com permissoes e sem self-approval",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-010"
+      ],
+      "depends_on": [
+        "NODE-007"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: diretor/admin transitam para Em analise e Aprovado/Rejeitado; engenheiro/financeiro recebem 403",
+          "pytest: usuario nao pode aprovar documento cujo criado_por e ele mesmo",
+          "pytest: transicoes invalidas de status sao rejeitadas"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-008/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-009",
+      "title": "Auditoria imutavel de toda acao (login, upload, download, aprovacao, rejeicao, exclusao)",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-011"
+      ],
+      "depends_on": [
+        "NODE-008"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: cada acao relevante gera registro com autor, acao, alvo e timestamp",
+          "pytest: historico de um documento e consultavel em ordem cronologica",
+          "pytest: registros de auditoria nao podem ser editados/apagados via API"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-009/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-010",
+      "title": "Busca de documentos por nome, categoria, obra, status e usuario, respeitando escopo",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-012"
+      ],
+      "depends_on": [
+        "NODE-005"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: busca filtra por cada criterio e por combinacoes",
+          "pytest: resultados nunca incluem documentos de obras fora do escopo do usuario",
+          "pytest: busca sem resultados retorna lista vazia (nao erro)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-010/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-011",
+      "title": "Exclusao soft-delete restrita ao Admin e auditada",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-013"
+      ],
+      "depends_on": [
+        "NODE-009"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: apenas admin exclui; demais papeis recebem 403",
+          "pytest: soft-delete marca documento como removido sem apagar objeto/versoes",
+          "pytest: documento removido some de listagens/buscas padrao e o evento e auditado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-011/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-012",
+      "title": "Recuperacao de senha via token de uso unico com expiracao (esqueci minha senha)",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-002"
+      ],
+      "depends_on": [
+        "NODE-002"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: solicitar reset gera token de uso unico com expiracao sem revelar se o e-mail existe",
+          "pytest: token valido troca a senha; token usado/expirado e rejeitado",
+          "pytest: nova senha gravada em bcrypt e token invalidado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-012/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-013",
+      "title": "MFA via TOTP opt-in por usuario",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-003"
+      ],
+      "depends_on": [
+        "NODE-002"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: ativar MFA gera segredo TOTP",
+          "pytest: com MFA ativo, login sem codigo valido e negado",
+          "pytest: com MFA ativo, login com codigo TOTP valido e aceito"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-013/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-014",
+      "title": "Observabilidade: health check com estado de DB e MinIO + structlog em toda a app",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-014"
+      ],
+      "depends_on": [
+        "NODE-006"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "pytest: /health retorna ok quando DB e MinIO respondem",
+          "pytest: /health reporta unhealthy quando uma dependencia esta indisponivel",
+          "pytest: logs sao emitidos em formato estruturado (structlog)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-014/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-015",
+      "title": "UI minima em Streamlit (login, listar/filtrar, upload, aprovar/rejeitar, historico)",
+      "type": "implementation",
+      "track": "TRK-implementation",
+      "requirement_ids": [
+        "REQ-017"
+      ],
+      "depends_on": [
+        "NODE-008",
+        "NODE-010"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "smoke manual: login pela UI autentica contra a API",
+          "smoke manual: UI lista documentos no escopo e permite upload, aprovacao e busca"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-015/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-016",
+      "title": "Deploy Docker Compose (API, PostgreSQL, MinIO) + terminacao HTTPS via reverse proxy",
+      "type": "release",
+      "track": "TRK-release",
+      "requirement_ids": [
+        "REQ-015"
+      ],
+      "depends_on": [
+        "NODE-014"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "smoke: docker compose up sobe API, PostgreSQL e MinIO conectados",
+          "smoke: API alcanca DB e MinIO via variaveis de ambiente e /health passa",
+          "revisao: segredos/credenciais vem de env, nada hardcoded (ver GAP-002 sobre HTTPS)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-016/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-017",
+      "title": "Durabilidade: backup diario do PostgreSQL e redundancia MinIO via volumes persistentes",
+      "type": "release",
+      "track": "TRK-release",
+      "requirement_ids": [
+        "REQ-016"
+      ],
+      "depends_on": [
+        "NODE-016"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "artefato: rotina de backup diario do PostgreSQL (pg_dump) executavel e documentada",
+          "smoke: arquivos MinIO em volume persistente sobrevivem a recriacao do container",
+          "artefato: procedimento de restauracao do backup documentado e testado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-017/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    }
+  ]
+}

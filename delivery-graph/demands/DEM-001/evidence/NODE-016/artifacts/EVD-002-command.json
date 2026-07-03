@@ -1,0 +1,12 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "scripts/smoke_health.py"
+  ],
+  "exit_code": 0,
+  "stdout": "{\"status\": \"ok\", \"checks\": {\"database\": \"ok\", \"storage\": \"ok\"}}\r\nSMOKE OK: API up, PostgreSQL and MinIO connected via env config\r\n",
+  "stderr": "",
+  "created_at": "2026-07-03T19:56:09.174Z",
+  "artifacts": []
+}

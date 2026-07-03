@@ -1,0 +1,46 @@
+{
+  "node_id": "NODE-001",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/ruff.exe check . passed",
+      "satisfies": "ruff check passa sem erros",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/ruff.exe",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:19:00.908Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe -q passed",
+      "satisfies": "pytest executa a suite com sucesso (mesmo minima)",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:19:18.140Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_scaffold.py -q passed",
+      "satisfies": "app FastAPI inicia e emite log estruturado (structlog)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_scaffold.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:19:23.009Z"
+    }
+  ]
+}

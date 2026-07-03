@@ -1,0 +1,53 @@
+{
+  "node_id": "NODE-007",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_versioning.py -k increments_and_preserves -q passed",
+      "satisfies": "pytest: re-upload incrementa versao e preserva o objeto da versao anterior",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_versioning.py",
+        "-k",
+        "increments_and_preserves",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:58:15.364Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_versioning.py -k resets_status -q passed",
+      "satisfies": "pytest: nova versao reseta o status para Enviado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_versioning.py",
+        "-k",
+        "resets_status",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:58:22.251Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/pytest.exe tests/test_versioning.py -k refers_to_approved -q passed",
+      "satisfies": "pytest: aprovacao registrada refere-se a versao aprovada",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/pytest.exe",
+        "tests/test_versioning.py",
+        "-k",
+        "refers_to_approved",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-07-03T18:58:29.127Z"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+"""GED DGE application package."""
