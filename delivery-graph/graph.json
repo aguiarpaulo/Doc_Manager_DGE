@@ -351,7 +351,7 @@
       "blocks": [
         "REQ-002"
       ],
-      "resolution": null
+      "resolution": "Resolvido: SMTPEmailSender genérico (smtplib) em app/services/email.py, provedor-agnóstico e configurado por env (GED_SMTP_HOST/PORT/USER/PASSWORD/FROM/STARTTLS + GED_RESET_URL_BASE). get_email_sender seleciona SMTP quando GED_SMTP_HOST está definido, senão mantém ConsoleEmailSender em dev. E-mail de reset traz link clicável com o token."
     },
     {
       "id": "GAP-002",
