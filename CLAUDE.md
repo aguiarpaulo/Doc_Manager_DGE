@@ -91,8 +91,10 @@ re-stored.
 access + refresh tokens. `app/services/password_reset.py` and
 `app/services/mfa.py` (TOTP, opt-in) hang off the same user model but are
 separate flows from the base login. `app/services/email.py` is a swappable
-`EmailSender` protocol — production SMTP is not wired yet (`ConsoleEmailSender`
-just logs the token); see `GAP-001` in `delivery-graph/graph.json`.
+`EmailSender` protocol: `SMTPEmailSender` (stdlib `smtplib`, provider-agnostic)
+sends real reset e-mails when `GED_SMTP_HOST` is set, otherwise
+`ConsoleEmailSender` just logs the token for dev; tests swap in
+`InMemoryEmailSender`. Selection lives in `get_email_sender`.
 
 **Config** (`app/config.py`) reads everything from env vars prefixed `GED_`
 (see `.env.example`); nothing is hardcoded, enforced by
