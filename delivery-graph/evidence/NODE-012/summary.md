@@ -3,7 +3,7 @@
 ## O que foi implementado
 
 - `app/models/password_reset.py` — `PasswordResetToken` (user_id, token_hash SHA-256, expires_at, used, created_at). Token guardado **hasheado**.
-- `app/services/email.py` — abstração `EmailSender` (Protocol) com `ConsoleEmailSender` (dev, loga token via structlog) e `InMemoryEmailSender` (testes). **GAP-001**: o provedor SMTP de produção segue em aberto; só `get_email_sender` muda quando definido.
+- `app/services/email.py` — abstração `EmailSender` (Protocol) com `ConsoleEmailSender` (dev, loga token via structlog), `InMemoryEmailSender` (testes) e `SMTPEmailSender` (produção, via `smtplib`). `get_email_sender` seleciona SMTP quando `GED_SMTP_HOST` está definido — **GAP-001 resolvido**.
 - `app/services/password_reset.py` — `create_reset_token` (uso único, expiração via `reset_token_expire_minutes`) e `reset_password` (valida existência/uso/expiração, grava nova senha em bcrypt, marca token usado).
 - `app/api/auth.py` — `POST /auth/forgot-password` (resposta genérica idêntica, sem vazar existência) e `POST /auth/reset-password`.
 - `tests/test_password_reset.py` — cobre os 3 itens do contrato.
@@ -16,6 +16,6 @@
 
 ## Gap relacionado
 
-- **GAP-001** (provedor SMTP) permanece aberto e não bloqueia: o fluxo funciona com `ConsoleEmailSender` em dev; produção só precisa plugar um `EmailSender` SMTP em `get_email_sender`.
+- **GAP-001** (provedor SMTP) **resolvido**: `SMTPEmailSender` genérico (`smtplib`, provedor-agnóstico) enviando link clicável de reset, configurado por `GED_SMTP_*` + `GED_RESET_URL_BASE`. Sem `GED_SMTP_HOST`, o modo dev (`ConsoleEmailSender`) segue valendo. Coberto por `tests/test_email.py` (smtplib mockado). Ver `.env.example`.
 
-Suite total: 49 passed, ruff limpo.
+Suite total: 66 passed, ruff limpo.
