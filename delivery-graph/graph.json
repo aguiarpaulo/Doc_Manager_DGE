@@ -361,7 +361,7 @@
       "blocks": [
         "REQ-015"
       ],
-      "resolution": null
+      "resolution": "Resolvido: terminação HTTPS via Caddy com TLS automático. docker/Caddyfile faz reverse_proxy para api:8000; o serviço caddy no docker-compose.yml expõe 443 e provisiona certificado por CADDY_DOMAIN (Let's Encrypt em domínio real, self-signed em localhost). Evidência em NODE-016. Pendência não-bloqueante: confirmar domínio/cert de produção."
     }
   ],
   "tracks": [
