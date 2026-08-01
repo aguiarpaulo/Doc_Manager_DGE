@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     minio_bucket: str = "documents"
     minio_secure: bool = False
 
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

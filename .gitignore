@@ -219,3 +219,6 @@ __marimo__/
 
 # GED backups (local dumps)
 /backups/
+
+# Git worktrees
+.worktrees/

@@ -14,17 +14,23 @@ import time
 
 from minio import Minio
 
+from app.config import get_settings
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-ENDPOINT = "localhost:9000"
-ACCESS_KEY = "ged-minio"
-SECRET_KEY = "smoke-minio-pass-1234"
-BUCKET = "documents"
 KEY = "persistence-check.txt"
 PAYLOAD = b"durability smoke payload"
 
+_settings = get_settings()
+BUCKET = _settings.minio_bucket
+
 
 def _client() -> Minio:
-    return Minio(ENDPOINT, access_key=ACCESS_KEY, secret_key=SECRET_KEY, secure=False)
+    return Minio(
+        _settings.minio_endpoint,
+        access_key=_settings.minio_access_key,
+        secret_key=_settings.minio_secret_key,
+        secure=_settings.minio_secure,
+    )
 
 
 def _wait_ready(timeout: int = 60) -> None:

@@ -33,7 +33,7 @@ Isso cria o ambiente virtual em `.venv/`.
 
 ## Rodar os testes ✅
 
-É a forma principal de verificar o sistema. São ~60 testes que **não precisam de
+É a forma principal de verificar o sistema. São ~70 testes que **não precisam de
 Docker, Postgres nem MinIO** — o `tests/conftest.py` substitui banco, armazenamento e
 e-mail por versões em memória.
 
@@ -47,7 +47,13 @@ uv run pytest -k login              # só testes cujo nome contém "login"
 Cada arquivo em `tests/` cobre uma área: `test_auth`, `test_users`, `test_obras`,
 `test_documents`, `test_uploads`, `test_versioning`, `test_approval`, `test_mfa`,
 `test_password_reset`, `test_search`, `test_soft_delete`, `test_audit`,
-`test_observability`, `test_streamlit_ui`, `test_scaffold`.
+`test_observability`, `test_streamlit_ui`, `test_scaffold`, `test_bootstrap_admin`,
+`test_container_build`, `test_operational_scripts`.
+
+Os três últimos protegem o caminho do Docker, que o resto da suíte não exercita: eles
+checam o artefato que sobe no container (o entrypoint precisa ter fim de linha LF, senão
+o kernel Linux procura um interpretador chamado `bash\r`) e que os scripts de host leem
+credenciais da configuração em vez de carregarem as suas próprias.
 
 ### Checar qualidade do código (lint)
 
@@ -69,7 +75,11 @@ uv run ruff format .     # formata o código
    copy .env.example .env
    ```
 
-   Edite o `.env` e troque **todas** as senhas/segredos por valores fortes.
+   Edite o `.env` e troque **todas** as senhas/segredos por valores fortes. Preste
+   atenção em `GED_BOOTSTRAP_ADMIN_EMAIL` e `GED_BOOTSTRAP_ADMIN_PASSWORD`: é com esse
+   par que você vai fazer o primeiro login. O e-mail precisa ser um endereço válido de
+   verdade — domínios reservados como `.local` e `.test` são recusados, e a API se
+   recusa a subir com um admin que ninguém conseguiria usar.
 
 2. Suba os serviços:
 
@@ -77,15 +87,43 @@ uv run ruff format .     # formata o código
    docker compose up --build
    ```
 
+   Na primeira subida a API aplica as migrações e cria o administrador inicial. Nas
+   seguintes ela detecta que já existe um administrador e não mexe em nada.
+
 3. Acesse:
    - API: <http://localhost:8000>
    - **Documentação interativa da API: <http://localhost:8000/docs>** — dá pra testar
-     cada endpoint direto no navegador
+     cada endpoint direto no navegador. Comece por `POST /auth/login` com as credenciais
+     do `GED_BOOTSTRAP_ADMIN_*`; o `access_token` da resposta destrava o resto.
+   - HTTPS via Caddy: <https://localhost> (certificado interno em `localhost`, então o
+     navegador avisa; `http://localhost` redireciona com 308)
    - Console do MinIO: <http://localhost:9001>
+
+#### Backup diário automático (opcional)
+
+O `docker compose up` acima **não** inclui a rotina de backup. Ela vive num overlay
+separado e precisa ser pedida explicitamente:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
+```
 
 ### Opção B — API local + Postgres/MinIO no Docker
 
 Útil no dia a dia de desenvolvimento (recarrega o código sozinho).
+
+> **Atenção — não funciona direto.** O serviço `postgres` do `docker-compose.yml` não
+> publica a porta 5432 no host (só o MinIO publica 9000/9001), de propósito: o compose é
+> o arquivo de deploy e expor o banco não é o padrão desejável em produção. Rodando a
+> API na sua máquina, o passo 2 abaixo dá timeout de conexão. Para usar a Opção B você
+> precisa, **localmente**, publicar a porta e apontar a URL do banco:
+>
+> 1. crie um `docker-compose.override.yml` (não versionado) publicando `5432:5432` no
+>    serviço `postgres`;
+> 2. acrescente ao `.env` um `GED_DATABASE_URL` com a mesma senha de `POSTGRES_PASSWORD`
+>    — o padrão embutido é `ged:ged`, que não bate com o `.env` gerado.
+>
+> Sem esses dois passos, use a Opção A.
 
 ```powershell
 # 1. Suba só a infraestrutura
@@ -154,9 +192,17 @@ A API lê variáveis com prefixo `GED_` (do arquivo `.env`). Ver `app/config.py`
 | `GED_MINIO_SECRET_KEY` | Senha do MinIO                        | `minioadmin`                                      |
 | `GED_MINIO_BUCKET`     | Nome do bucket de documentos          | `documents`                                       |
 | `GED_MINIO_SECURE`     | Usar HTTPS no MinIO (`true`/`false`)  | `false`                                           |
+| `GED_BOOTSTRAP_ADMIN_EMAIL`    | E-mail do administrador inicial | (vazio — pula o bootstrap)              |
+| `GED_BOOTSTRAP_ADMIN_PASSWORD` | Senha do administrador inicial (mín. 12 caracteres) | (vazio)   |
 
-O `docker-compose.yml` também usa `POSTGRES_*`, `MINIO_ROOT_*` e `CADDY_DOMAIN`
-(ver `.env.example`).
+`GED_MINIO_ACCESS_KEY` e `GED_MINIO_SECRET_KEY` são o **único** par de nomes para a
+credencial do MinIO: o compose entrega esses valores ao servidor MinIO como credencial
+root, e todo cliente (API no Docker, API rodando local, scripts de smoke) lê as mesmas
+duas variáveis. Não existem mais `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` — se o seu
+`.env` for antigo e ainda usar esses nomes, o compose para com uma mensagem dizendo
+qual variável falta.
+
+O `docker-compose.yml` também usa `POSTGRES_*` e `CADDY_DOMAIN` (ver `.env.example`).
 
 ---
 
@@ -171,10 +217,6 @@ O `docker-compose.yml` também usa `POSTGRES_*`, `MINIO_ROOT_*` e `CADDY_DOMAIN`
 
 ## Limitações conhecidas
 
-- **Não há criação do primeiro administrador.** A rota `POST /users` exige um usuário
-  administrador já autenticado (`require_admin`), mas não existe script de seed nem
-  bootstrap para criar o primeiro admin. Em um banco novo é preciso inserir o primeiro
-  administrador manualmente (por SQL) para conseguir usar o sistema.
 - **Sem CI.** Não há `.github/workflows/` — `pytest` e `ruff` precisam ser rodados
   manualmente antes de cada commit.
 - **Sem medição de cobertura de testes** (`pytest-cov` não está configurado).
