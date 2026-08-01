@@ -18,4 +18,4 @@
 
 ## Gap relacionado
 
-- **GAP-002** (mecanismo HTTPS): default implementado = **Caddy** com TLS automático via `CADDY_DOMAIN`. Confirmar domínio/cert de produção com o usuário; não bloqueia o stack (API+PG+MinIO verificados).
+- **GAP-002** (mecanismo HTTPS): **resolvido** — mecanismo oficial = **Caddy** com TLS automático via `CADDY_DOMAIN` (`docker/Caddyfile` + serviço `caddy` expondo 443 no `docker-compose.yml`). `graph.json` atualizado com a `resolution`; consistência coberta por `tests/test_delivery_graph.py`. Pendência não-bloqueante: confirmar domínio/cert de produção com o usuário.
