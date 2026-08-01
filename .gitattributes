@@ -1,0 +1,4 @@
+# Shell scripts are copied into Linux containers and executed there: a CRLF shebang
+# makes the kernel look for an interpreter named `bash\r`. Keep them LF on every platform.
+*.sh text eol=lf
+docker/entrypoint.sh text eol=lf

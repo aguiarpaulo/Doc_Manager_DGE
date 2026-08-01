@@ -46,7 +46,8 @@ uv run python scripts/smoke_minio_persistence.py  # manual smoke: storage surviv
 uv run python scripts/check_no_hardcoded_secrets.py  # asserts config comes from env, not literals
 
 docker compose up --build           # full stack: API + Postgres + MinIO + Caddy (HTTPS)
-docker compose up postgres minio    # infra only, then run API locally with --reload
+docker compose up postgres minio    # infra only; needs a local override publishing 5432
+                                     # plus GED_DATABASE_URL in .env — see README Option B
 uv run streamlit run streamlit_app/app.py   # UI; talks to API via GED_API_URL (default localhost:8000)
 ```
 
@@ -91,12 +92,32 @@ re-stored.
 access + refresh tokens. `app/services/password_reset.py` and
 `app/services/mfa.py` (TOTP, opt-in) hang off the same user model but are
 separate flows from the base login. `app/services/email.py` is a swappable
-`EmailSender` protocol — production SMTP is not wired yet (`ConsoleEmailSender`
-just logs the token); see `GAP-001` in `delivery-graph/graph.json`.
+`EmailSender` protocol: `SMTPEmailSender` (stdlib `smtplib`, provider-agnostic)
+sends real reset e-mails when `GED_SMTP_HOST` is set, otherwise
+`ConsoleEmailSender` just logs the token for dev; tests swap in
+`InMemoryEmailSender`. Selection lives in `get_email_sender`.
 
 **Config** (`app/config.py`) reads everything from env vars prefixed `GED_`
 (see `.env.example`); nothing is hardcoded, enforced by
-`scripts/check_no_hardcoded_secrets.py`.
+`scripts/check_no_hardcoded_secrets.py`, which scans `docker-compose.yml` *and*
+`scripts/` — the host-side scripts run against a live deployment, so a credential
+baked into one of them authenticates against nothing. `GED_MINIO_ACCESS_KEY` /
+`GED_MINIO_SECRET_KEY` are the single naming for the MinIO credential: compose hands
+them to the MinIO server as its root user, and every client reads the same two names.
+
+**First-admin bootstrap** (`app/services/bootstrap.py`, run by `docker/entrypoint.sh`
+as `python -m app.bootstrap_admin` between `alembic upgrade head` and uvicorn):
+`POST /users` is admin-only, so a fresh database would otherwise have no way to
+produce its first login. `ensure_first_admin` creates one administrator from
+`GED_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD`, and is a no-op once *any* administrator
+exists — so it never overwrites a password on restart. It validates the address with
+the same `EmailStr` rule the login endpoint uses; a reserved domain like `.local`
+raises and aborts container startup rather than seeding an admin nobody can log in as.
+
+**Shell scripts must stay LF.** `docker/entrypoint.sh` is copied into a Linux image and
+exec'd; a CRLF shebang makes the kernel look for `bash\r`. `.gitattributes` pins
+`*.sh eol=lf` and `tests/test_container_build.py` guards it, because the pytest suite
+otherwise never touches the Docker path.
 
 **Streamlit UI** (`streamlit_app/app.py` + `api_client.py`) is a thin client
 against the API — it has no business logic of its own and is verified
@@ -105,8 +126,9 @@ uses Streamlit's `AppTest` harness and can be timing-flaky).
 
 ## Known limitations (from README, still true)
 
-- **No first-admin bootstrap.** `POST /users` requires an already-authenticated
-  admin; a fresh database needs its first admin inserted manually via SQL.
+- **Option B (local API + Docker infra) does not work as written.** The `postgres`
+  service publishes no host port, and `GED_DATABASE_URL`'s built-in default
+  (`ged:ged`) does not match a generated `.env`. Needs a local compose override.
 - **No test coverage measurement** (`pytest-cov` not configured).
 - **No automated end-to-end tests** against real Postgres/MinIO — tests use
   in-memory fakes; the `scripts/smoke_*.py` scripts are manual-only.
