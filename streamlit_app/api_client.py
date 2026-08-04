@@ -49,6 +49,47 @@ def login(email: str, password: str, mfa_code: str | None = None) -> dict:
     return resp.json()
 
 
+def me(token: str) -> dict:
+    resp = requests.get(f"{BASE_URL}/auth/me", headers=_auth(token), timeout=TIMEOUT)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def create_obra(token: str, nome: str, descricao: str) -> dict:
+    resp = requests.post(
+        f"{BASE_URL}/obras",
+        headers=_auth(token),
+        json={"nome": nome, "descricao": descricao},
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def list_users(token: str) -> list[dict]:
+    resp = requests.get(f"{BASE_URL}/users", headers=_auth(token), timeout=TIMEOUT)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def create_user(token: str, email: str, password: str, role: str) -> dict:
+    resp = requests.post(
+        f"{BASE_URL}/users",
+        headers=_auth(token),
+        json={"email": email, "password": password, "role": role},
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def grant_obra_access(token: str, obra_id: str, user_id: str) -> None:
+    resp = requests.put(
+        f"{BASE_URL}/obras/{obra_id}/users/{user_id}", headers=_auth(token), timeout=TIMEOUT
+    )
+    resp.raise_for_status()
+
+
 def search_documents(token: str, **filters) -> list[dict]:
     params = {k: v for k, v in filters.items() if v}
     resp = requests.get(

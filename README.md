@@ -189,6 +189,21 @@ for i in range(1, 6):
 PY
 ```
 
+#### Aba "Administração" (só administrador)
+
+Quem entra com o papel `administrador` ganha uma terceira aba com três blocos:
+cadastrar obra, cadastrar usuário e conceder a um usuário acesso a uma obra. A UI
+descobre o papel por `GET /auth/me` — o JWT carrega apenas `sub`, `type`, `iat` e
+`exp`, sem papel. Os demais papéis não veem a aba.
+
+A concessão de acesso só muda o que `engenheiro` e `financeiro` enxergam:
+`administrador` e `diretor` já têm acesso global a todas as obras
+([app/scope.py](app/scope.py)).
+
+O `diretor` **não** vê a aba. As três operações são `require_admin` na API, então
+uma aba visível para ele teria todos os botões devolvendo 403. Para mudar isso é
+preciso ampliar a autorização de `POST /obras` e `PUT /obras/{obra}/users/{user}`.
+
 #### Erros da API na interface
 
 Falhas de `GET /documents`, `GET /obras` e do envio de documentos aparecem como

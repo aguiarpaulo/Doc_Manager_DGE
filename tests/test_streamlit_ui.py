@@ -62,8 +62,23 @@ def _http_error(status_code: int, payload) -> requests.HTTPError:
     return requests.HTTPError(f"{status_code} Client Error", response=response)
 
 
-def _dashboard(monkeypatch, **overrides) -> AppTest:
+USERS = [
+    {"id": "user-1", "email": "ana@example.com", "role": "engenheiro", "is_active": True},
+    {"id": "user-2", "email": "bruno@example.com", "role": "financeiro", "is_active": True},
+]
+
+
+def _dashboard(monkeypatch, role: str = "engenheiro", **overrides) -> AppTest:
     """An authenticated dashboard with the HTTP layer stubbed; overrides win."""
+    monkeypatch.setattr(
+        api_client, "me", lambda token: {"id": "me", "email": "eu@example.com", "role": role}
+    )
+    monkeypatch.setattr(api_client, "list_users", lambda token: USERS)
+    monkeypatch.setattr(api_client, "create_obra", lambda token, nome, descricao: {"id": "o-9"})
+    monkeypatch.setattr(
+        api_client, "create_user", lambda token, email, password, role: {"id": "u-9"}
+    )
+    monkeypatch.setattr(api_client, "grant_obra_access", lambda token, obra_id, user_id: None)
     monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
     monkeypatch.setattr(api_client, "download_version", lambda token, doc, ver: (PNG, "image/png"))
@@ -337,6 +352,88 @@ def test_download_version_returns_the_bytes_and_type_the_api_sent(monkeypatch):
 
     assert content == PNG
     assert content_type == "image/png"
+
+
+def test_ui_gives_the_administrator_an_administration_tab(monkeypatch):
+    at = _dashboard(monkeypatch, role="administrador").run()
+    assert not at.exception
+    assert [tab.label for tab in at.tabs] == [
+        "Enviar documento",
+        "Documentos",
+        "Administração",
+    ]
+
+
+@pytest.mark.parametrize("role", ["engenheiro", "financeiro", "diretor"])
+def test_ui_hides_the_administration_tab_from_everyone_else(monkeypatch, role):
+    at = _dashboard(monkeypatch, role=role).run()
+    assert not at.exception
+    assert [tab.label for tab in at.tabs] == ["Enviar documento", "Documentos"]
+
+
+def test_ui_registers_a_new_obra_with_the_name_and_description_typed(monkeypatch):
+    recebido = {}
+
+    def fake_create_obra(token, nome, descricao):
+        recebido.update(nome=nome, descricao=descricao)
+        return {"id": "o-9", "nome": nome}
+
+    at = _dashboard(monkeypatch, role="administrador", create_obra=fake_create_obra).run()
+    at.text_input(key="admin_obra_nome").set_value("Obra 06")
+    at.text_input(key="admin_obra_descricao").set_value("ponte norte")
+    at = next(b for b in at.button if b.label == "Cadastrar obra").click().run()
+
+    assert not at.exception
+    assert recebido == {"nome": "Obra 06", "descricao": "ponte norte"}
+
+
+def test_ui_registers_a_new_user_with_the_role_chosen(monkeypatch):
+    recebido = {}
+
+    def fake_create_user(token, email, password, role):
+        recebido.update(email=email, password=password, role=role)
+        return {"id": "u-9", "email": email}
+
+    at = _dashboard(monkeypatch, role="administrador", create_user=fake_create_user).run()
+    at.text_input(key="admin_user_email").set_value("novo@example.com")
+    at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at.selectbox(key="admin_user_role").set_value("financeiro")
+    at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
+
+    assert not at.exception
+    assert recebido == {
+        "email": "novo@example.com",
+        "password": "SenhaForte@123",
+        "role": "financeiro",
+    }
+
+
+def test_ui_grants_the_chosen_user_access_to_the_chosen_obra(monkeypatch):
+    concedidos = []
+
+    def fake_grant(token, obra_id, user_id):
+        concedidos.append((obra_id, user_id))
+
+    at = _dashboard(monkeypatch, role="administrador", grant_obra_access=fake_grant).run()
+    at.selectbox(key="admin_grant_obra").set_value(OBRAS[1]["id"])
+    at.selectbox(key="admin_grant_user").set_value(USERS[1]["id"])
+    at = next(b for b in at.button if b.label == "Conceder acesso").click().run()
+
+    assert not at.exception
+    assert concedidos == [(OBRAS[1]["id"], USERS[1]["id"])]
+
+
+def test_ui_shows_the_api_message_when_the_email_is_already_registered(monkeypatch):
+    def rejecting_create_user(token, email, password, role):
+        raise _http_error(409, {"detail": "E-mail já cadastrado"})
+
+    at = _dashboard(monkeypatch, role="administrador", create_user=rejecting_create_user).run()
+    at.text_input(key="admin_user_email").set_value("repetido@example.com")
+    at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
+
+    assert not at.exception
+    assert any("E-mail já cadastrado" in error.value for error in at.error)
 
 
 if __name__ == "__main__":  # pragma: no cover
