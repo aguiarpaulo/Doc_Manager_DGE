@@ -146,6 +146,22 @@ uv run streamlit run streamlit_app/app.py
 
 A UI usa a variável `GED_API_URL` para achar a API (padrão: `http://localhost:8000`).
 
+#### Organização da tela
+
+A interface tem duas abas:
+
+- **Enviar documento** — o formulário de criação e upload.
+- **Documentos** — consulta no layout do [SEI](https://softwarepublico.gov.br/social/sei/manuais/manual-do-usuario/3.-operacoes-basicas-com-processos),
+  onde a **obra faz o papel do processo**: escolhida a obra, os documentos aparecem
+  em coluna à esquerda "organizados por ordem de inclusão, na vertical" (mais antigo
+  no topo, mais recente no fim), numerados. Clicar em um documento o destaca e abre o
+  conteúdo à direita, embutido na própria página — PDF no visualizador nativo do
+  Streamlit, imagens em `st.image`, e botão de download sempre disponível.
+
+O visualizador de PDF exige o extra `streamlit[pdf]` (pacote `streamlit-pdf`), já
+declarado nas dependências. Se ele faltar no ambiente, a página não quebra: o
+documento continua baixável e a UI avisa qual extra instalar.
+
 #### Pré-requisito: obras cadastradas
 
 O formulário "Novo documento" oferece um seletor com as obras que o usuário logado
@@ -203,6 +219,12 @@ os tipos que a API valida de verdade. Configure com `GED_SMOKE_EMAIL`,
 `GED_SMOKE_PASSWORD` e `GED_SMOKE_FILE` (caminho de um PDF para anexar); cada execução
 acrescenta bytes únicos ao arquivo, porque a API rejeita com 409 um upload cujo hash já
 exista na mesma obra.
+
+O smoke cobre login, envio, a árvore de documentos da obra e a abertura do documento
+no visualizador. O que ele **não** cobre é o desenho do PDF na tela: `st.pdf` é um
+componente de frontend e o `AppTest` roda sem o runtime que registra componentes, então
+nesse caminho a UI cai no aviso de visualizador indisponível. A renderização visual só
+se confirma abrindo a aplicação no navegador.
 
 ---
 
