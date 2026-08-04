@@ -4,14 +4,21 @@ The live end-to-end smoke against a running API+MinIO is a manual step; here we 
 the UI wiring: login authenticates via the client, and the dashboard lists/creates docs.
 """
 
+import json
 from pathlib import Path
 
 import pytest
+import requests
 from streamlit.testing.v1 import AppTest
 
 from streamlit_app import api_client
 
 APP = str(Path(__file__).resolve().parent.parent / "streamlit_app" / "app.py")
+
+OBRAS = [
+    {"id": "11111111-1111-1111-1111-111111111111", "nome": "Obra 01"},
+    {"id": "22222222-2222-2222-2222-222222222222", "nome": "Obra 02"},
+]
 
 
 class _FakeResponse:
@@ -23,6 +30,30 @@ class _FakeResponse:
 
     def json(self):
         return self._payload
+
+
+def _http_error(status_code: int, payload) -> requests.HTTPError:
+    """A real requests.HTTPError carrying a real Response, as the API would produce."""
+    response = requests.Response()
+    response.status_code = status_code
+    response._content = json.dumps(payload).encode()
+    response.headers["Content-Type"] = "application/json"
+    return requests.HTTPError(f"{status_code} Client Error", response=response)
+
+
+def _dashboard(monkeypatch, **overrides) -> AppTest:
+    """An authenticated dashboard with the HTTP layer stubbed; overrides win."""
+    monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
+    monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
+    for name, value in overrides.items():
+        monkeypatch.setattr(api_client, name, value)
+    at = AppTest.from_file(APP, default_timeout=30)
+    at.session_state["token"] = "tok"
+    return at
+
+
+def _submit(at: AppTest) -> AppTest:
+    return next(b for b in at.button if b.label == "Criar e enviar").click().run()
 
 
 def test_api_client_login_posts_credentials_and_returns_tokens(monkeypatch):
@@ -67,7 +98,8 @@ def test_ui_login_authenticates_against_api(monkeypatch):
         api_client, "login", lambda email, password, mfa=None: {"access_token": "tok"}
     )
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
-    at = AppTest.from_file(APP).run()
+    monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
+    at = AppTest.from_file(APP, default_timeout=30).run()
     at.text_input(key="email").set_value("ana@example.com")
     at.text_input(key="password").set_value("pw")
     at.button(key="login_btn").click().run()
@@ -80,14 +112,97 @@ def test_ui_dashboard_lists_documents(monkeypatch):
         {"id": "1", "nome": "contrato.pdf", "categoria": "contrato", "status": "enviado"},
         {"id": "2", "nome": "laudo.pdf", "categoria": "laudo", "status": "aprovado"},
     ]
-    monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: sample)
-    at = AppTest.from_file(APP)
-    at.session_state["token"] = "tok"
-    at.run()
+    at = _dashboard(monkeypatch, search_documents=lambda token, **kw: sample).run()
     assert not at.exception
     rendered = " ".join(md.value for md in at.markdown)
     assert "contrato.pdf" in rendered
     assert "laudo.pdf" in rendered
+
+
+def test_ui_offers_obra_names_not_raw_ids(monkeypatch):
+    at = _dashboard(monkeypatch).run()
+    assert not at.exception
+    assert at.selectbox(key="new_obra").options == ["Obra 01", "Obra 02"]
+
+
+def test_ui_sends_obra_id_of_the_obra_the_user_picked(monkeypatch):
+    captured = {}
+
+    def fake_create(token, nome, obra_id, categoria):
+        captured["obra_id"] = obra_id
+        return {"id": "doc-1", "nome": nome}
+
+    at = _dashboard(monkeypatch, create_document=fake_create).run()
+    at.text_input(key="new_nome").set_value("teste01")
+    obra_widget = at.selectbox(key="new_obra")
+    obra_widget.set_value(OBRAS[obra_widget.options.index("Obra 02")]["id"])
+    at = _submit(at)
+
+    assert not at.exception
+    assert captured["obra_id"] == "22222222-2222-2222-2222-222222222222"
+
+
+def test_ui_tells_the_user_when_no_obra_is_available(monkeypatch):
+    at = _dashboard(monkeypatch, list_obras=lambda token: []).run()
+    assert not at.exception
+    assert all(widget.key != "new_obra" for widget in at.selectbox)
+    assert any("obra" in warning.value.lower() for warning in at.warning)
+
+
+def test_ui_shows_api_message_when_document_creation_is_rejected(monkeypatch):
+    def rejecting_create(token, nome, obra_id, categoria):
+        raise _http_error(404, {"detail": "Obra não encontrada"})
+
+    at = _dashboard(monkeypatch, create_document=rejecting_create).run()
+    at.text_input(key="new_nome").set_value("teste01")
+    at = _submit(at)
+
+    assert not at.exception
+    assert any("Obra não encontrada" in error.value for error in at.error)
+
+
+def test_ui_shows_api_message_when_document_search_fails(monkeypatch):
+    def failing_search(token, **filters):
+        raise _http_error(401, {"detail": "Token expirado"})
+
+    at = _dashboard(monkeypatch, search_documents=failing_search).run()
+
+    assert not at.exception
+    assert any("Token expirado" in error.value for error in at.error)
+
+
+def test_error_message_reports_the_api_detail():
+    message = api_client.error_message(_http_error(404, {"detail": "Obra não encontrada"}))
+    assert "Obra não encontrada" in message
+
+
+def test_error_message_reports_which_field_failed_validation():
+    validation_body = {
+        "detail": [
+            {
+                "type": "uuid_parsing",
+                "loc": ["body", "obra_id"],
+                "msg": "Input should be a valid UUID, invalid character: found `o` at 1",
+                "input": "obra_test_01",
+            }
+        ]
+    }
+    message = api_client.error_message(_http_error(422, validation_body))
+    assert "obra_id" in message
+    assert "UUID" in message
+
+
+def test_error_message_survives_an_unexpected_detail_shape():
+    message = api_client.error_message(_http_error(400, {"detail": ["campo inválido"]}))
+    assert "campo inválido" in message
+
+
+def test_error_message_falls_back_when_body_is_not_json():
+    response = requests.Response()
+    response.status_code = 502
+    response._content = b"<html>Bad Gateway</html>"
+    message = api_client.error_message(requests.HTTPError("502", response=response))
+    assert message.strip()
 
 
 if __name__ == "__main__":  # pragma: no cover

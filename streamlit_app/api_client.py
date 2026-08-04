@@ -12,6 +12,34 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def error_message(exc: requests.HTTPError) -> str:
+    """Human-readable text for an API error.
+
+    FastAPI answers with `detail` as a string for business errors and as a list of
+    per-field entries for validation errors; both shapes are flattened here.
+    """
+    response = exc.response
+    if response is None:
+        return str(exc)
+    try:
+        detail = response.json()["detail"]
+    except (ValueError, KeyError, TypeError):
+        return response.text.strip() or str(exc)
+    if isinstance(detail, str):
+        return detail
+    if isinstance(detail, list):
+        fields = []
+        for item in detail:
+            if not isinstance(item, dict):
+                fields.append(str(item))
+                continue
+            location = ".".join(str(part) for part in item.get("loc", [])[1:])
+            message = str(item.get("msg", ""))
+            fields.append(f"{location}: {message}" if location else message)
+        return "; ".join(fields)
+    return str(detail)
+
+
 def login(email: str, password: str, mfa_code: str | None = None) -> dict:
     payload = {"email": email, "password": password}
     if mfa_code:
