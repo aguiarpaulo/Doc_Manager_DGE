@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     minio_bucket: str = "documents"
     minio_secure: bool = False
 
+    smtp_host: str = ""  # empty = dev mode: reset tokens are logged, not e-mailed
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""  # sender address; falls back to smtp_user when empty
+    smtp_starttls: bool = True
+    reset_url_base: str = ""  # e.g. https://ged.example.com/reset-password
+
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
 
