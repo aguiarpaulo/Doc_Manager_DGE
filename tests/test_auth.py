@@ -62,3 +62,21 @@ def test_refresh_rejects_access_token_used_as_refresh(client, make_user):
     # Passing an access token to the refresh endpoint must be rejected (wrong type).
     resp = client.post("/auth/refresh", json={"refresh_token": tokens["access_token"]})
     assert resp.status_code == 401
+
+
+def test_me_identifies_the_user_holding_the_token(client, auth_headers):
+    from app.models.user import Role
+
+    auth_headers(role=Role.ENGENHEIRO, email="joao@example.com")
+    headers = auth_headers(role=Role.DIRETOR, email="carla@example.com")
+
+    resp = client.get("/auth/me", headers=headers)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["email"] == "carla@example.com"
+    assert body["role"] == "diretor"
+
+
+def test_me_without_a_token_is_rejected(client):
+    assert client.get("/auth/me").status_code in (401, 403)

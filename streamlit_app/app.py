@@ -15,6 +15,8 @@ from streamlit.errors import StreamlitAPIException
 from streamlit_app import api_client
 
 CATEGORIAS = ["contrato", "projeto", "nota_fiscal", "licenca", "laudo", "outros"]
+PAPEIS = ["administrador", "diretor", "engenheiro", "financeiro"]
+ADMIN_ROLE = "administrador"
 
 st.set_page_config(page_title="GED DGE", page_icon="📄", layout="wide")
 st.title("📄 GED DGE — Gestão de Documentos")
@@ -150,6 +152,72 @@ def render_documents_tab(token: str, nome_por_id: dict[str, str]) -> None:
         render_viewer(token, open_document)
 
 
+def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
+    st.subheader("Nova obra")
+    with st.form("admin_obra"):
+        nome = st.text_input("Nome da obra", key="admin_obra_nome")
+        descricao = st.text_input("Descrição (opcional)", key="admin_obra_descricao")
+        if st.form_submit_button("Cadastrar obra") and nome:
+            try:
+                api_client.create_obra(token, nome, descricao)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                st.success(f"Obra cadastrada: {nome}.")
+
+    st.subheader("Novo usuário")
+    with st.form("admin_user"):
+        email = st.text_input("E-mail", key="admin_user_email")
+        senha = st.text_input("Senha", type="password", key="admin_user_senha")
+        papel = st.selectbox("Papel", PAPEIS, key="admin_user_role")
+        if st.form_submit_button("Cadastrar usuário") and email and senha:
+            try:
+                api_client.create_user(token, email, senha, papel)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                st.success(f"Usuário {email} cadastrado.")
+
+    st.subheader("Conceder acesso a uma obra")
+    st.caption(
+        "Administrador e diretor já enxergam todas as obras; a atribuição só muda o que "
+        "engenheiro e financeiro conseguem ver."
+    )
+    if not nome_por_id:
+        st.info("Cadastre uma obra antes de conceder acesso.")
+        return
+    try:
+        users = api_client.list_users(token)
+    except requests.HTTPError as exc:
+        st.error(api_client.error_message(exc))
+        return
+    if not users:
+        st.info("Nenhum usuário cadastrado ainda.")
+        return
+
+    email_por_id = {user["id"]: f"{user['email']} ({user['role']})" for user in users}
+    with st.form("admin_grant"):
+        obra_id = st.selectbox(
+            "Obra",
+            list(nome_por_id),
+            format_func=lambda oid: nome_por_id[oid],
+            key="admin_grant_obra",
+        )
+        user_id = st.selectbox(
+            "Usuário",
+            list(email_por_id),
+            format_func=lambda uid: email_por_id[uid],
+            key="admin_grant_user",
+        )
+        if st.form_submit_button("Conceder acesso"):
+            try:
+                api_client.grant_obra_access(token, obra_id, user_id)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                st.success(f"{email_por_id[user_id]} agora acessa {nome_por_id[obra_id]}.")
+
+
 def render_dashboard() -> None:
     token = st.session_state.token
     if st.button("Sair", key="logout_btn"):
@@ -157,21 +225,35 @@ def render_dashboard() -> None:
         st.rerun()
 
     try:
+        current_user = api_client.me(token)
         obras = api_client.list_obras(token)
     except requests.HTTPError as exc:
         st.error(api_client.error_message(exc))
         return
 
-    if not obras:
-        st.warning("Nenhuma obra cadastrada. Peça a um administrador para cadastrar uma obra.")
-        return
-
+    is_admin = current_user.get("role") == ADMIN_ROLE
     nome_por_id = {obra["id"]: obra["nome"] for obra in obras}
-    upload_tab, documents_tab = st.tabs(["Enviar documento", "Documentos"])
-    with upload_tab:
-        render_upload_tab(token, nome_por_id)
-    with documents_tab:
-        render_documents_tab(token, nome_por_id)
+
+    labels = ["Enviar documento", "Documentos"]
+    if is_admin:
+        labels.append("Administração")
+    tabs = st.tabs(labels)
+
+    sem_obra = "Nenhuma obra cadastrada. Peça a um administrador para cadastrar uma obra."
+    with tabs[0]:
+        if obras:
+            render_upload_tab(token, nome_por_id)
+        else:
+            st.warning(sem_obra)
+    with tabs[1]:
+        if obras:
+            render_documents_tab(token, nome_por_id)
+        else:
+            st.warning(sem_obra)
+    if is_admin:
+        # Reachable with zero obras on purpose: this tab is where the first one is created.
+        with tabs[2]:
+            render_admin_tab(token, nome_por_id)
 
 
 if st.session_state.token:

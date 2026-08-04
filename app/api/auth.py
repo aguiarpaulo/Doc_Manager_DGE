@@ -16,6 +16,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     TokenResponse,
 )
+from app.schemas.user import UserRead
 from app.security import (
     REFRESH_TOKEN,
     create_access_token,
@@ -26,9 +27,7 @@ from app.security import (
 from app.services import audit, mfa, password_reset
 from app.services.email import EmailSender, get_email_sender
 
-GENERIC_RESET_MESSAGE = {
-    "message": "Se o e-mail existir, enviaremos instruções de recuperação."
-}
+GENERIC_RESET_MESSAGE = {"message": "Se o e-mail existir, enviaremos instruções de recuperação."}
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,6 +59,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
         access_token=create_access_token(subject),
         refresh_token=create_refresh_token(subject),
     )
+
+
+@router.get("/me", response_model=UserRead)
+def read_current_user(current_user: User = Depends(get_current_user)) -> User:
+    """Who the bearer token belongs to. The UI needs the role to shape the menu."""
+    return current_user
 
 
 @router.post("/mfa/enable")

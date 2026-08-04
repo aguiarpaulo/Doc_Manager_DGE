@@ -43,6 +43,8 @@ uv run python scripts/backup_postgres.py    # backup
 uv run python scripts/restore_postgres.py   # restore
 uv run python scripts/smoke_health.py             # manual smoke: /health against live services
 uv run python scripts/smoke_minio_persistence.py  # manual smoke: storage survives container recreation
+uv run python scripts/smoke_streamlit_ui.py       # manual smoke: drives the UI against the live stack;
+                                     # GED_SMOKE_EMAIL / _PASSWORD / _FILE (a PDF to attach)
 uv run python scripts/check_no_hardcoded_secrets.py  # asserts config comes from env, not literals
 
 docker compose up --build           # full stack: API + Postgres + MinIO + Caddy (HTTPS)
@@ -89,7 +91,10 @@ match within the same obra is flagged as a duplicate rather than silently
 re-stored.
 
 **Auth** (`app/security.py`, `app/api/auth.py`): bcrypt password hashes, JWT
-access + refresh tokens. `app/services/password_reset.py` and
+access + refresh tokens. The token payload is deliberately minimal — `sub`,
+`type`, `iat`, `exp` — so anything needing the caller's role or e-mail must hit
+`GET /auth/me`, which returns the current user via the same `get_current_user`
+dependency every other endpoint uses. `app/services/password_reset.py` and
 `app/services/mfa.py` (TOTP, opt-in) hang off the same user model but are
 separate flows from the base login. `app/services/email.py` is a swappable
 `EmailSender` protocol: `SMTPEmailSender` (stdlib `smtplib`, provider-agnostic)
@@ -119,10 +124,37 @@ exec'd; a CRLF shebang makes the kernel look for `bash\r`. `.gitattributes` pins
 `*.sh eol=lf` and `tests/test_container_build.py` guards it, because the pytest suite
 otherwise never touches the Docker path.
 
-**Streamlit UI** (`streamlit_app/app.py` + `api_client.py`) is a thin client
-against the API — it has no business logic of its own and is verified
-manually, not by the pytest suite (except `tests/test_streamlit_ui.py`, which
-uses Streamlit's `AppTest` harness and can be timing-flaky).
+**Streamlit UI** (`streamlit_app/app.py` + `api_client.py`) is a thin client with
+no business logic of its own. Every HTTP call goes through `api_client`; the
+render functions catch `requests.HTTPError` at the boundary and surface
+`api_client.error_message(exc)`, which flattens both `detail` shapes FastAPI
+emits (a string for business errors, a per-field list for 422).
+
+The dashboard is tabbed. "Documentos" reproduces the SEI process screen: an
+**obra plays the role of a process**, its documents are listed in inclusion order
+(oldest first) on the left, and the selected one renders beside the list.
+Rendering dispatches on the `Content-Type` the download endpoint returns, never
+on the filename. "Administração" only exists for `administrador` — the UI learns
+the role from `GET /auth/me` because the JWT carries only `sub`/`type`/`iat`/`exp`.
+That tab stays reachable with zero obras on purpose: it is where the first one
+is created, so an early return there would deadlock a fresh install.
+
+**Testing the UI has a hard boundary.** `tests/test_streamlit_ui.py` drives the
+real app through Streamlit's `AppTest`, but `AppTest` runs without
+`streamlit.runtime.Runtime`, which is what registers frontend components. So
+`st.pdf` (from the `streamlit[pdf]` extra) raises `StreamlitAPIException` under
+`AppTest` and works in a real server; `st.image` is not queryable at all. Two
+consequences: `render_content` wraps `st.pdf` in a `try/except` so a deploy
+missing the extra degrades to a download button instead of killing the page, and
+no test asserts that a PDF visually rendered — `scripts/smoke_streamlit_ui.py`
+covers everything up to that point against the live stack, and the pixels need a
+browser.
+
+Related lesson recorded in `delivery-graph/demands/DEM-001/evidence/NODE-015/`:
+that node's contract demanded a *manual* smoke, but the evidence filed was pytest
+with `api_client` mocked. Mocked runs never exercise the types the API validates,
+which is how a `text_input` for a `uuid.UUID` field shipped and made every upload
+return 422. Do not file a mocked test run as smoke evidence.
 
 ## Known limitations (from README, still true)
 
@@ -132,3 +164,12 @@ uses Streamlit's `AppTest` harness and can be timing-flaky).
 - **No test coverage measurement** (`pytest-cov` not configured).
 - **No automated end-to-end tests** against real Postgres/MinIO — tests use
   in-memory fakes; the `scripts/smoke_*.py` scripts are manual-only.
+- **`diretor` cannot administer anything.** `POST /obras`, `POST /users` and
+  `PUT/DELETE /obras/{obra}/users/{user}` are all `require_admin`, so the
+  "Administração" tab is administrator-only. Widening it to Diretor means
+  changing those authorization rules, not just the UI condition.
+- **The login screen leaves orphan widgets in `AppTest`.** `render_login` ends in
+  `st.rerun()`, and the harness keeps nodes from the pre-rerun pass, which breaks
+  the next interaction. A real browser replaces the tree, so this is harness-only;
+  `scripts/smoke_streamlit_ui.py` works around it by starting a fresh `AppTest`
+  with the token already in `session_state` after proving login.
