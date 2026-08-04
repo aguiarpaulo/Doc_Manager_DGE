@@ -41,6 +41,13 @@ def main() -> int:
     token = at.session_state["token"]
     print(f"login OK: {EMAIL}")
 
+    # O `st.rerun()` do login deixa nos orfaos da tela anterior na arvore do AppTest
+    # (no navegador o rerun troca a arvore inteira). Com o login ja provado acima,
+    # o restante do smoke roda numa sessao limpa e ja autenticada.
+    at = AppTest.from_file(APP, default_timeout=90)
+    at.session_state["token"] = token
+    at = at.run()
+
     obras = api_client.list_obras(token)
     if not obras:
         print("SMOKE FAILED: nenhuma obra no escopo do usuario", file=sys.stderr)
@@ -82,7 +89,30 @@ def main() -> int:
         print("SMOKE FAILED: arquivo anexado nao gerou versao", file=sys.stderr)
         return 1
 
-    print("SMOKE OK: login, listagem por nome de obra, criacao e upload pela UI")
+    # Aba "Documentos": arvore no estilo SEI e visualizador do documento selecionado.
+    at.selectbox(key="tree_obra").set_value(alvo["id"])
+    at = at.run()
+    arvore = [b.label for b in at.button if (b.key or "").startswith("doc_")]
+    if not arvore:
+        print(f"SMOKE FAILED: arvore vazia para a obra {alvo['nome']}", file=sys.stderr)
+        return 1
+    print(f"arvore da obra {alvo['nome']}: {len(arvore)} documento(s), ultimo = {arvore[-1]}")
+
+    at = _click(at, arvore[-1])
+    erros = [error.value for error in at.error]
+    if at.exception or erros:
+        print(f"SMOKE FAILED: visualizador quebrou: {at.exception or erros}", file=sys.stderr)
+        return 1
+
+    baixado, tipo = api_client.download_version(
+        token, documento["id"], documento["current_version"]
+    )
+    if UPLOAD and (tipo != "application/pdf" or not baixado.startswith(b"%PDF-")):
+        print(f"SMOKE FAILED: conteudo servido nao e PDF ({tipo})", file=sys.stderr)
+        return 1
+    print(f"visualizador abriu o documento: {len(baixado)} bytes, {tipo}")
+
+    print("SMOKE OK: login, arvore por ordem de inclusao, upload e visualizacao pela UI")
     return 0
 
 

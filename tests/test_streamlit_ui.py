@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 import requests
+import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from streamlit_app import api_client
@@ -19,6 +20,26 @@ OBRAS = [
     {"id": "11111111-1111-1111-1111-111111111111", "nome": "Obra 01"},
     {"id": "22222222-2222-2222-2222-222222222222", "nome": "Obra 02"},
 ]
+
+PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+    "0000000a49444154789c636000000200010005fe02fe0000000049454e44ae426082"
+)
+
+
+def _document(nome: str, criado_em: str, **overrides) -> dict:
+    doc = {
+        "id": f"doc-{nome}",
+        "nome": nome,
+        "obra_id": OBRAS[0]["id"],
+        "categoria": "outros",
+        "status": "enviado",
+        "criado_por": "user-1",
+        "criado_em": criado_em,
+        "current_version": 1,
+    }
+    doc.update(overrides)
+    return doc
 
 
 class _FakeResponse:
@@ -45,8 +66,11 @@ def _dashboard(monkeypatch, **overrides) -> AppTest:
     """An authenticated dashboard with the HTTP layer stubbed; overrides win."""
     monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
+    monkeypatch.setattr(api_client, "download_version", lambda token, doc, ver: (PNG, "image/png"))
     for name, value in overrides.items():
         monkeypatch.setattr(api_client, name, value)
+    # The viewer caches downloads; without this the cache would leak across tests.
+    st.cache_data.clear()
     at = AppTest.from_file(APP, default_timeout=30)
     at.session_state["token"] = "tok"
     return at
@@ -54,6 +78,15 @@ def _dashboard(monkeypatch, **overrides) -> AppTest:
 
 def _submit(at: AppTest) -> AppTest:
     return next(b for b in at.button if b.label == "Criar e enviar").click().run()
+
+
+def _document_labels(at: AppTest) -> list[str]:
+    """Labels of the buttons that make up the SEI-style document tree."""
+    return [button.label for button in at.button if (button.key or "").startswith("doc_")]
+
+
+def _open_document(at: AppTest, label: str) -> AppTest:
+    return next(b for b in at.button if b.label == label).click().run()
 
 
 def test_api_client_login_posts_credentials_and_returns_tokens(monkeypatch):
@@ -107,16 +140,20 @@ def test_ui_login_authenticates_against_api(monkeypatch):
     assert at.session_state["token"] == "tok"
 
 
-def test_ui_dashboard_lists_documents(monkeypatch):
-    sample = [
-        {"id": "1", "nome": "contrato.pdf", "categoria": "contrato", "status": "enviado"},
-        {"id": "2", "nome": "laudo.pdf", "categoria": "laudo", "status": "aprovado"},
-    ]
-    at = _dashboard(monkeypatch, search_documents=lambda token, **kw: sample).run()
+def test_ui_lists_only_the_documents_of_the_obra_being_viewed(monkeypatch):
+    filtros = {}
+
+    def fake_search(token, **kw):
+        filtros.update(kw)
+        return [_document("contrato.pdf", "2026-01-15T09:00:00Z")]
+
+    at = _dashboard(monkeypatch, search_documents=fake_search).run()
+    at.selectbox(key="tree_obra").set_value(OBRAS[1]["id"])
+    at = at.run()
+
     assert not at.exception
-    rendered = " ".join(md.value for md in at.markdown)
-    assert "contrato.pdf" in rendered
-    assert "laudo.pdf" in rendered
+    assert filtros["obra_id"] == OBRAS[1]["id"]
+    assert _document_labels(at) == ["1. contrato.pdf"]
 
 
 def test_ui_offers_obra_names_not_raw_ids(monkeypatch):
@@ -203,6 +240,103 @@ def test_error_message_falls_back_when_body_is_not_json():
     response._content = b"<html>Bad Gateway</html>"
     message = api_client.error_message(requests.HTTPError("502", response=response))
     assert message.strip()
+
+
+def test_ui_separates_upload_and_consultation_in_tabs(monkeypatch):
+    at = _dashboard(monkeypatch).run()
+    assert not at.exception
+    assert [tab.label for tab in at.tabs] == ["Enviar documento", "Documentos"]
+
+
+def test_ui_lists_documents_in_upload_order(monkeypatch):
+    # A API devolve fora de ordem; a arvore do SEI e por ordem de inclusao.
+    fora_de_ordem = [
+        _document("laudo.pdf", "2026-03-02T10:00:00Z"),
+        _document("contrato.pdf", "2026-01-15T09:00:00Z"),
+        _document("nota.pdf", "2026-02-20T14:30:00Z"),
+    ]
+    at = _dashboard(monkeypatch, search_documents=lambda token, **kw: fora_de_ordem).run()
+
+    assert not at.exception
+    assert _document_labels(at) == ["1. contrato.pdf", "2. nota.pdf", "3. laudo.pdf"]
+
+
+def test_ui_opening_a_document_fetches_that_documents_content(monkeypatch):
+    documentos = [
+        _document("contrato.pdf", "2026-01-15T09:00:00Z"),
+        _document("laudo.pdf", "2026-03-02T10:00:00Z", current_version=3),
+    ]
+    pedidos = []
+
+    def fake_download(token, document_id, version):
+        pedidos.append((document_id, version))
+        return PNG, "image/png"
+
+    at = _dashboard(
+        monkeypatch,
+        search_documents=lambda token, **kw: documentos,
+        download_version=fake_download,
+    ).run()
+    at = _open_document(at, "2. laudo.pdf")
+
+    assert not at.exception
+    assert pedidos == [("doc-laudo.pdf", 3)]
+
+
+def test_ui_does_not_download_a_document_that_has_no_file(monkeypatch):
+    sem_arquivo = [_document("rascunho.pdf", "2026-01-15T09:00:00Z", current_version=0)]
+
+    def fake_download(token, document_id, version):
+        raise AssertionError("nao deve baixar um documento sem versao")
+
+    at = _dashboard(
+        monkeypatch,
+        search_documents=lambda token, **kw: sem_arquivo,
+        download_version=fake_download,
+    ).run()
+    at = _open_document(at, "1. rascunho.pdf")
+
+    assert not at.exception
+    assert any("arquivo" in warning.value.lower() for warning in at.warning)
+
+
+def test_ui_shows_api_message_when_the_content_cannot_be_downloaded(monkeypatch):
+    documentos = [_document("contrato.pdf", "2026-01-15T09:00:00Z")]
+
+    def failing_download(token, document_id, version):
+        raise _http_error(404, {"detail": "Versão não encontrada"})
+
+    at = _dashboard(
+        monkeypatch,
+        search_documents=lambda token, **kw: documentos,
+        download_version=failing_download,
+    ).run()
+    at = _open_document(at, "1. contrato.pdf")
+
+    assert not at.exception
+    assert any("Versão não encontrada" in error.value for error in at.error)
+
+
+def test_ui_asks_the_user_to_pick_a_document_before_showing_content(monkeypatch):
+    documentos = [_document("contrato.pdf", "2026-01-15T09:00:00Z")]
+    at = _dashboard(monkeypatch, search_documents=lambda token, **kw: documentos).run()
+
+    assert not at.exception
+    rendered = " ".join(info.value.lower() for info in at.info)
+    assert "selecione" in rendered
+
+
+def test_download_version_returns_the_bytes_and_type_the_api_sent(monkeypatch):
+    response = requests.Response()
+    response.status_code = 200
+    response._content = PNG
+    response.headers["Content-Type"] = "image/png"
+    monkeypatch.setattr(api_client.requests, "get", lambda url, headers, timeout: response)
+
+    content, content_type = api_client.download_version("tok", "doc-1", 2)
+
+    assert content == PNG
+    assert content_type == "image/png"
 
 
 if __name__ == "__main__":  # pragma: no cover

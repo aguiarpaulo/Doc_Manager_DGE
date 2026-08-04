@@ -86,6 +86,17 @@ def upload_version(token: str, document_id: str, filename: str, data: bytes, con
     return resp.json()
 
 
+def download_version(token: str, document_id: str, version: int) -> tuple[bytes, str]:
+    """Fetch a stored version's bytes along with the content type the API reports."""
+    resp = requests.get(
+        f"{BASE_URL}/documents/{document_id}/versions/{version}/download",
+        headers=_auth(token),
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+
 def transition(token: str, document_id: str, action: str) -> dict:
     resp = requests.post(
         f"{BASE_URL}/documents/{document_id}/{action}", headers=_auth(token), timeout=TIMEOUT
