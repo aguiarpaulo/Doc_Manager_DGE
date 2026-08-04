@@ -147,9 +147,6 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
-# Git worktrees
-.worktrees/
-
 # Environments
 .env
 .envrc
@@ -222,3 +219,6 @@ __marimo__/
 
 # GED backups (local dumps)
 /backups/
+
+# Git worktrees
+.worktrees/

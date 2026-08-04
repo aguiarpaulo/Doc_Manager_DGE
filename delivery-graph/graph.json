@@ -351,7 +351,7 @@
       "blocks": [
         "REQ-002"
       ],
-      "resolution": null
+      "resolution": "Resolvido: SMTPEmailSender genérico (smtplib) em app/services/email.py, provedor-agnóstico e configurado por env (GED_SMTP_HOST/PORT/USER/PASSWORD/FROM/STARTTLS + GED_RESET_URL_BASE). get_email_sender seleciona SMTP quando GED_SMTP_HOST está definido, senão mantém ConsoleEmailSender em dev. E-mail de reset traz link clicável com o token."
     },
     {
       "id": "GAP-002",
@@ -361,7 +361,7 @@
       "blocks": [
         "REQ-015"
       ],
-      "resolution": null
+      "resolution": "Resolvido: terminação HTTPS via Caddy com TLS automático. docker/Caddyfile faz reverse_proxy para api:8000; o serviço caddy no docker-compose.yml expõe 443 e provisiona certificado por CADDY_DOMAIN (Let's Encrypt em domínio real, self-signed em localhost). Evidência em NODE-016. Pendência não-bloqueante: confirmar domínio/cert de produção."
     }
   ],
   "tracks": [
