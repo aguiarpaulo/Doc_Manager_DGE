@@ -32,6 +32,37 @@
       ],
       "exit_code": 0,
       "created_at": "2026-07-03T19:44:18.429Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "scripts/smoke_streamlit_ui.py dirigiu app.py contra API+PostgreSQL+MinIO reais (sem mocks): login pela UI autenticou",
+      "satisfies": "smoke manual: login pela UI autentica contra a API",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "scripts/smoke_streamlit_ui.py"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-04T17:16:10.001978Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "smoke real: seletor lista as obras do escopo por nome, criacao + upload do PDF em um unico submit gravou v1 na obra escolhida; 13 testes de UI cobrem selecao de obra e erros da API",
+      "satisfies": "smoke manual: UI lista documentos no escopo e permite upload, aprovacao e busca",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_streamlit_ui.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-04T17:16:10.001978Z"
     }
   ]
 }

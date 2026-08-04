@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "command": [
+    "uv",
+    "run",
+    "python",
+    "scripts/smoke_streamlit_ui.py"
+  ],
+  "exit_code": 0,
+  "stdout": "login OK: admin@dge.com.br\nobras oferecidas na UI: ['Obra Piloto', 'Obra 01', 'Obra 02', 'Obra 03', 'Obra 04', 'Obra 05']\ndocumento criado na obra Obra 05: v1\nSMOKE OK: login, listagem por nome de obra, criacao e upload pela UI\n",
+  "stderr": "2026-08-04 14:15:00.572 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.\n",
+  "created_at": "2026-08-04T17:16:10.001978Z",
+  "artifacts": []
+}
