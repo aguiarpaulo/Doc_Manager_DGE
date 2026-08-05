@@ -4,7 +4,9 @@ from pydantic import BaseModel, EmailStr
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # A plain str, not the validated Username: a badly shaped login must come back as
+    # "wrong credentials", never as a 422 that teaches an anonymous caller the rule.
+    username: str
     password: str
     mfa_code: str | None = None
 

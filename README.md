@@ -301,6 +301,7 @@ A API lê variáveis com prefixo `GED_` (do arquivo `.env`). Ver `app/config.py`
 | `GED_MINIO_SECRET_KEY` | Senha do MinIO                        | `minioadmin`                                      |
 | `GED_MINIO_BUCKET`     | Nome do bucket de documentos          | `documents`                                       |
 | `GED_MINIO_SECURE`     | Usar HTTPS no MinIO (`true`/`false`)  | `false`                                           |
+| `GED_BOOTSTRAP_ADMIN_USERNAME` | Login do administrador inicial | (derivado do e-mail)                     |
 | `GED_BOOTSTRAP_ADMIN_EMAIL`    | E-mail do administrador inicial | (vazio — pula o bootstrap)              |
 | `GED_BOOTSTRAP_ADMIN_PASSWORD` | Senha do administrador inicial (mín. 12 caracteres) | (vazio)   |
 
@@ -321,6 +322,35 @@ O `docker-compose.yml` também usa `POSTGRES_*` e `CADDY_DOMAIN` (ver `.env.exam
 - **Categorias de documento:** `contrato`, `projeto`, `nota_fiscal`, `licenca`,
   `laudo`, `outros`
 - **Status de aprovação:** `enviado`, `em_analise`, `aprovado`, `rejeitado`
+
+## Identificação do usuário
+
+O login é um **nome de usuário**, não o e-mail: de 3 a 32 caracteres, sem espaços,
+aceitando letras, números, ponto, hífen e sublinhado (`pauloaguiar` vale;
+`paulo aguiar` não). É normalizado para minúsculas, então a caixa digitada não importa
+no login. A regra vive em [app/usernames.py](app/usernames.py) e é a mesma usada pela
+API e pelo bootstrap do primeiro administrador.
+
+O **e-mail continua obrigatório** no cadastro, mas deixou de ser credencial: serve para
+entregar o link de recuperação de senha. `GED_BOOTSTRAP_ADMIN_USERNAME` define o login
+do administrador inicial; se não for informado, é derivado do trecho antes do `@` do
+`GED_BOOTSTRAP_ADMIN_EMAIL`.
+
+Na migração de um banco que já tinha usuários, o username sai do trecho antes do `@`.
+Se dois e-mails colidirem (`admin@a.com` e `admin@b.com`), o mais antigo fica com o nome
+limpo e os seguintes recebem sufixo numérico — confira com
+`SELECT username, email FROM users;` depois de migrar.
+
+No cadastro pela interface a senha é digitada **duas vezes** e as duas precisam bater
+antes de a chamada à API acontecer.
+
+## Tipos de arquivo aceitos no upload
+
+PDF, PNG, JPEG, TXT, Word (`.doc`, `.docx`) e Excel (`.xls`, `.xlsx`), até 50 MB.
+A lista real é `ALLOWED_CONTENT_TYPES` em [app/services/uploads.py](app/services/uploads.py)
+e a validação é por *content type*, não por extensão — a extensão oferecida pela
+interface é só conveniência, quem decide é a API. Só PDF e imagens têm pré-visualização;
+os demais aparecem com botão de download.
 
 ---
 

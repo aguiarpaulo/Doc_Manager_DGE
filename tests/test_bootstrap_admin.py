@@ -14,21 +14,29 @@ ADMIN_EMAIL = "chefe@example.com"
 ADMIN_PASSWORD = "primeiro-admin-forte"
 
 
-def _login(client, email: str, password: str):
-    return client.post("/auth/login", json={"email": email, "password": password})
+ADMIN_USERNAME = "chefe"
+
+
+def _login(client, username: str, password: str):
+    return client.post("/auth/login", json={"username": username, "password": password})
 
 
 def test_bootstrapped_admin_can_log_in_and_create_other_users(client, db_session):
     ensure_first_admin(db_session, ADMIN_EMAIL, ADMIN_PASSWORD)
 
-    login = _login(client, ADMIN_EMAIL, ADMIN_PASSWORD)
+    login = _login(client, ADMIN_USERNAME, ADMIN_PASSWORD)
     assert login.status_code == 200
 
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
     created = client.post(
         "/users",
         headers=headers,
-        json={"email": "engenheiro@example.com", "password": "pw123456", "role": "engenheiro"},
+        json={
+            "username": "engenheiro",
+            "email": "engenheiro@example.com",
+            "password": "pw123456",
+            "role": "engenheiro",
+        },
     )
 
     assert created.status_code == 201
@@ -38,7 +46,7 @@ def test_repeated_bootstrap_does_not_add_a_second_administrator(client, db_sessi
     ensure_first_admin(db_session, ADMIN_EMAIL, ADMIN_PASSWORD)
     ensure_first_admin(db_session, ADMIN_EMAIL, ADMIN_PASSWORD)
 
-    login = _login(client, ADMIN_EMAIL, ADMIN_PASSWORD)
+    login = _login(client, ADMIN_USERNAME, ADMIN_PASSWORD)
     assert login.status_code == 200
 
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
@@ -55,8 +63,8 @@ def test_bootstrap_does_not_change_the_password_of_an_existing_administrator(
 
     ensure_first_admin(db_session, ADMIN_EMAIL, "senha-nova-do-invasor")
 
-    assert _login(client, ADMIN_EMAIL, "senha-original").status_code == 200
-    assert _login(client, ADMIN_EMAIL, "senha-nova-do-invasor").status_code == 401
+    assert _login(client, ADMIN_USERNAME, "senha-original").status_code == 200
+    assert _login(client, ADMIN_USERNAME, "senha-nova-do-invasor").status_code == 401
 
 
 def test_bootstrap_stands_down_when_any_administrator_already_exists(client, db_session, make_user):
@@ -64,7 +72,7 @@ def test_bootstrap_stands_down_when_any_administrator_already_exists(client, db_
 
     ensure_first_admin(db_session, ADMIN_EMAIL, ADMIN_PASSWORD)
 
-    assert _login(client, ADMIN_EMAIL, ADMIN_PASSWORD).status_code == 401
+    assert _login(client, ADMIN_USERNAME, ADMIN_PASSWORD).status_code == 401
 
 
 def test_bootstrap_creates_nothing_when_credentials_are_not_configured(db_session):
@@ -85,4 +93,4 @@ def test_bootstrap_refuses_a_password_too_weak_for_a_privileged_account(client, 
     with pytest.raises(ValueError):
         ensure_first_admin(db_session, ADMIN_EMAIL, "1234")
 
-    assert _login(client, ADMIN_EMAIL, "1234").status_code == 401
+    assert _login(client, ADMIN_USERNAME, "1234").status_code == 401

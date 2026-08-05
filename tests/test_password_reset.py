@@ -37,13 +37,17 @@ def test_valid_token_resets_and_used_or_expired_rejected(
     )
     assert ok.status_code == 200
     # New password works.
-    assert client.post(
-        "/auth/login", json={"email": "ana@example.com", "password": "new-pass-123"}
-    ).status_code == 200
+    assert (
+        client.post("/auth/login", json={"username": "ana", "password": "new-pass-123"}).status_code
+        == 200
+    )
     # Reusing the same (now used) token is rejected.
-    assert client.post(
-        "/auth/reset-password", json={"token": raw_token, "new_password": "another"}
-    ).status_code == 400
+    assert (
+        client.post(
+            "/auth/reset-password", json={"token": raw_token, "new_password": "another"}
+        ).status_code
+        == 400
+    )
 
 
 def test_expired_token_is_rejected(client, db_session, email_sender, make_user):
@@ -61,9 +65,7 @@ def test_expired_token_is_rejected(client, db_session, email_sender, make_user):
     assert resp.status_code == 400
 
 
-def test_new_password_is_bcrypt_and_token_invalidated(
-    client, db_session, email_sender, make_user
-):
+def test_new_password_is_bcrypt_and_token_invalidated(client, db_session, email_sender, make_user):
     make_user(email="ana@example.com", password="old-pass", role=Role.ENGENHEIRO)
     client.post("/auth/forgot-password", json={"email": "ana@example.com"})
     raw_token = email_sender.sent[-1].token
@@ -75,6 +77,7 @@ def test_new_password_is_bcrypt_and_token_invalidated(
     token_row = db_session.query(PasswordResetToken).one()
     assert token_row.used is True
     # Old password no longer works.
-    assert client.post(
-        "/auth/login", json={"email": "ana@example.com", "password": "old-pass"}
-    ).status_code == 401
+    assert (
+        client.post("/auth/login", json={"username": "ana", "password": "old-pass"}).status_code
+        == 401
+    )

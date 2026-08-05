@@ -26,6 +26,7 @@ from app.security import (
 )
 from app.services import audit, mfa, password_reset
 from app.services.email import EmailSender, get_email_sender
+from app.usernames import login_key
 
 GENERIC_RESET_MESSAGE = {"message": "Se o e-mail existir, enviaremos instruções de recuperação."}
 
@@ -38,9 +39,11 @@ INVALID_CREDENTIALS = HTTPException(
 
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
-    # Generic failure for unknown email, wrong password, or inactive account:
-    # never reveal whether the e-mail exists.
+    user = db.execute(
+        select(User).where(User.username == login_key(payload.username))
+    ).scalar_one_or_none()
+    # Generic failure for unknown user, wrong password, or inactive account:
+    # never reveal whether the account exists.
     if user is None or not user.is_active:
         raise INVALID_CREDENTIALS
     if not verify_password(payload.password, user.hashed_password):

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
     reset_url_base: str = ""  # e.g. https://ged.example.com/reset-password
 
+    bootstrap_admin_username: str | None = None
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
 

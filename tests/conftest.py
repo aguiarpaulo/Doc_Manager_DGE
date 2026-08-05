@@ -1,5 +1,6 @@
 """Shared test fixtures: an in-memory SQLite DB and an API client with overrides."""
 
+import re
 import uuid
 from collections.abc import Iterator
 
@@ -62,6 +63,12 @@ def client(
     app.dependency_overrides.clear()
 
 
+def _username_of(identifier: str) -> str:
+    """Login name for an address: everything before the @, cleaned of separators."""
+    local = identifier.split("@", 1)[0]
+    return re.sub(r"[^a-z0-9._-]", "", local.strip().lower())
+
+
 @pytest.fixture
 def auth_headers(client, make_user):
     """Create a user with the given role and return Bearer auth headers for it."""
@@ -73,25 +80,26 @@ def auth_headers(client, make_user):
     ) -> dict[str, str]:
         email = email or f"{role.value}@example.com"
         make_user(email=email, password=password, role=role)
-        token = client.post("/auth/login", json={"email": email, "password": password}).json()[
-            "access_token"
-        ]
-        return {"Authorization": f"Bearer {token}"}
+        return _bearer(client, _username_of(email), password)
 
     return _headers
 
 
 @pytest.fixture
 def headers_for(client):
-    """Return Bearer auth headers for an existing user, by email."""
+    """Bearer headers for an existing user, addressed by username or by e-mail."""
 
-    def _headers(email: str, password: str = "s3cret-pass") -> dict[str, str]:
-        token = client.post("/auth/login", json={"email": email, "password": password}).json()[
-            "access_token"
-        ]
-        return {"Authorization": f"Bearer {token}"}
+    def _headers(identifier: str, password: str = "s3cret-pass") -> dict[str, str]:
+        return _bearer(client, _username_of(identifier), password)
 
     return _headers
+
+
+def _bearer(client, username: str, password: str) -> dict[str, str]:
+    token = client.post("/auth/login", json={"username": username, "password": password}).json()[
+        "access_token"
+    ]
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
@@ -101,9 +109,12 @@ def make_user(db_session: Session):
         password: str = "s3cret-pass",
         role: Role = Role.ENGENHEIRO,
         is_active: bool = True,
+        username: str | None = None,
     ) -> User:
         user = User(
             id=uuid.uuid4(),
+            # Mirrors what the migration does to existing rows: the e-mail's local part.
+            username=username or _username_of(email),
             email=email,
             hashed_password=hash_password(password),
             role=role,
@@ -139,9 +150,7 @@ def make_document(db_session: Session):
         nome: str = "doc.pdf",
         categoria: Category = Category.CONTRATO,
     ) -> Document:
-        document = Document(
-            nome=nome, obra_id=obra.id, categoria=categoria, criado_por=creator.id
-        )
+        document = Document(nome=nome, obra_id=obra.id, categoria=categoria, criado_por=creator.id)
         db_session.add(document)
         db_session.commit()
         db_session.refresh(document)

@@ -18,6 +18,7 @@ router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(requir
 @router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     user = User(
+        username=payload.username,
         email=payload.email,
         hashed_password=hash_password(payload.password),
         role=payload.role,
@@ -28,7 +29,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="E-mail já cadastrado"
+            status_code=status.HTTP_409_CONFLICT, detail="Usuário ou e-mail já cadastrado"
         ) from exc
     db.refresh(user)
     return user

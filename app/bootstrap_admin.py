@@ -14,7 +14,10 @@ def main() -> None:
     session = SessionLocal()
     try:
         created = ensure_first_admin(
-            session, settings.bootstrap_admin_email, settings.bootstrap_admin_password
+            session,
+            settings.bootstrap_admin_email,
+            settings.bootstrap_admin_password,
+            settings.bootstrap_admin_username,
         )
     finally:
         session.close()

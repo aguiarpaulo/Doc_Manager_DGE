@@ -71,7 +71,14 @@ USERS = [
 def _dashboard(monkeypatch, role: str = "engenheiro", **overrides) -> AppTest:
     """An authenticated dashboard with the HTTP layer stubbed; overrides win."""
     monkeypatch.setattr(
-        api_client, "me", lambda token: {"id": "me", "email": "eu@example.com", "role": role}
+        api_client,
+        "me",
+        lambda token: {
+            "id": "me",
+            "username": "eu",
+            "email": "eu@example.com",
+            "role": role,
+        },
     )
     monkeypatch.setattr(api_client, "list_users", lambda token: USERS)
     monkeypatch.setattr(api_client, "create_obra", lambda token, nome, descricao: {"id": "o-9"})
@@ -118,10 +125,10 @@ def test_api_client_login_posts_credentials_and_returns_tokens(monkeypatch):
         return _FakeResponse({"access_token": "abc", "refresh_token": "ref"})
 
     monkeypatch.setattr(api_client.requests, "post", fake_post)
-    tokens = api_client.login("ana@example.com", "pw")
+    tokens = api_client.login("ana.silva", "pw")
     assert tokens["access_token"] == "abc"
     assert captured["url"].endswith("/auth/login")
-    assert captured["json"]["email"] == "ana@example.com"
+    assert captured["json"]["username"] == "ana.silva"
 
 
 def test_api_client_search_documents_sends_scope_filters(monkeypatch):
@@ -148,19 +155,24 @@ def test_ui_shows_login_when_unauthenticated():
 
 def test_ui_login_authenticates_against_api(monkeypatch):
     monkeypatch.setattr(
-        api_client, "login", lambda email, password, mfa=None: {"access_token": "tok"}
+        api_client, "login", lambda username, password, mfa=None: {"access_token": "tok"}
     )
     # The successful login reruns straight into the dashboard, which resolves the caller
     # via /auth/me; without this stub the test reaches for a real API on localhost:8000.
     monkeypatch.setattr(
         api_client,
         "me",
-        lambda token: {"id": "me", "email": "ana@example.com", "role": "engenheiro"},
+        lambda token: {
+            "id": "me",
+            "username": "ana.silva",
+            "email": "ana@example.com",
+            "role": "engenheiro",
+        },
     )
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
     monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
     at = AppTest.from_file(APP, default_timeout=30).run()
-    at.text_input(key="email").set_value("ana@example.com")
+    at.text_input(key="username").set_value("ana.silva")
     at.text_input(key="password").set_value("pw")
     at.button(key="login_btn").click().run()
     assert not at.exception
@@ -402,22 +414,61 @@ def test_ui_registers_a_new_obra_with_the_name_and_description_typed(monkeypatch
 def test_ui_registers_a_new_user_with_the_role_chosen(monkeypatch):
     recebido = {}
 
-    def fake_create_user(token, email, password, role):
-        recebido.update(email=email, password=password, role=role)
+    def fake_create_user(token, username, email, password, role):
+        recebido.update(username=username, email=email, password=password, role=role)
         return {"id": "u-9", "email": email}
 
     at = _dashboard(monkeypatch, role="administrador", create_user=fake_create_user).run()
+    at.text_input(key="admin_user_nome").set_value("pauloaguiar")
     at.text_input(key="admin_user_email").set_value("novo@example.com")
     at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at.text_input(key="admin_user_senha2").set_value("SenhaForte@123")
     at.selectbox(key="admin_user_role").set_value("financeiro")
     at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
 
     assert not at.exception
     assert recebido == {
+        "username": "pauloaguiar",
         "email": "novo@example.com",
         "password": "SenhaForte@123",
         "role": "financeiro",
     }
+
+
+def test_ui_refuses_to_create_the_user_when_the_two_passwords_differ(monkeypatch):
+    chamadas = []
+
+    def fake_create_user(token, username, email, password, role):
+        chamadas.append(username)
+        return {"id": "u-9"}
+
+    at = _dashboard(monkeypatch, role="administrador", create_user=fake_create_user).run()
+    at.text_input(key="admin_user_nome").set_value("pauloaguiar")
+    at.text_input(key="admin_user_email").set_value("novo@example.com")
+    at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at.text_input(key="admin_user_senha2").set_value("SenhaDiferente@123")
+    at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
+
+    assert not at.exception
+    assert chamadas == [], "não deve chamar a API com senhas divergentes"
+    assert any("não conferem" in error.value for error in at.error)
+
+
+def test_ui_shows_the_api_message_when_the_username_is_invalid(monkeypatch):
+    def rejecting_create_user(token, username, email, password, role):
+        raise _http_error(
+            422, {"detail": [{"loc": ["body", "username"], "msg": "Value error, sem espaços"}]}
+        )
+
+    at = _dashboard(monkeypatch, role="administrador", create_user=rejecting_create_user).run()
+    at.text_input(key="admin_user_nome").set_value("paulo aguiar")
+    at.text_input(key="admin_user_email").set_value("novo@example.com")
+    at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at.text_input(key="admin_user_senha2").set_value("SenhaForte@123")
+    at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
+
+    assert not at.exception
+    assert any("sem espaços" in error.value for error in at.error)
 
 
 def test_ui_grants_the_chosen_user_access_to_the_chosen_obra(monkeypatch):
@@ -435,17 +486,19 @@ def test_ui_grants_the_chosen_user_access_to_the_chosen_obra(monkeypatch):
     assert concedidos == [(OBRAS[1]["id"], USERS[1]["id"])]
 
 
-def test_ui_shows_the_api_message_when_the_email_is_already_registered(monkeypatch):
-    def rejecting_create_user(token, email, password, role):
-        raise _http_error(409, {"detail": "E-mail já cadastrado"})
+def test_ui_shows_the_api_message_when_the_user_is_already_registered(monkeypatch):
+    def rejecting_create_user(token, username, email, password, role):
+        raise _http_error(409, {"detail": "Usuário ou e-mail já cadastrado"})
 
     at = _dashboard(monkeypatch, role="administrador", create_user=rejecting_create_user).run()
+    at.text_input(key="admin_user_nome").set_value("repetido")
     at.text_input(key="admin_user_email").set_value("repetido@example.com")
     at.text_input(key="admin_user_senha").set_value("SenhaForte@123")
+    at.text_input(key="admin_user_senha2").set_value("SenhaForte@123")
     at = next(b for b in at.button if b.label == "Cadastrar usuário").click().run()
 
     assert not at.exception
-    assert any("E-mail já cadastrado" in error.value for error in at.error)
+    assert any("já cadastrado" in error.value for error in at.error)
 
 
 def test_ui_revokes_the_chosen_users_access_to_the_chosen_obra(monkeypatch):
