@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_db, require_admin
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.security import hash_password
 
@@ -40,10 +40,26 @@ def list_users(db: Session = Depends(get_db)) -> list[User]:
 
 
 @router.patch("/{user_id}", response_model=UserRead)
-def update_user(user_id: uuid.UUID, payload: UserUpdate, db: Session = Depends(get_db)) -> User:
+def update_user(
+    user_id: uuid.UUID,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> User:
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+
+    # Only a self-inflicted change can leave the system with nobody able to administer
+    # it: any admin acting on *another* admin is still an active admin afterwards.
+    if user.id == current_user.id:
+        losing_admin = payload.role is not None and payload.role is not Role.ADMINISTRADOR
+        if payload.is_active is False or losing_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Não é permitido reduzir os próprios privilégios",
+            )
+
     if payload.role is not None:
         user.role = payload.role
     if payload.is_active is not None:

@@ -10,6 +10,7 @@ from app.dependencies import get_current_user, get_db, require_admin
 from app.models.audit import AuditAction, AuditLog
 from app.models.document import Category, Document, DocumentStatus
 from app.models.document_version import DocumentVersion
+from app.models.obra import Obra
 from app.models.user import Role, User
 from app.schemas.audit import AuditLogRead
 from app.schemas.document import DocumentCreate, DocumentRead
@@ -70,7 +71,11 @@ def search_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Document]:
-    stmt = select(Document).where(Document.is_deleted.is_(False))
+    stmt = (
+        select(Document)
+        .join(Obra, Obra.id == Document.obra_id)
+        .where(Document.is_deleted.is_(False), Obra.is_deleted.is_(False))
+    )
 
     # Scope: non-global users only ever see documents in their assigned obras.
     if not has_global_access(current_user):

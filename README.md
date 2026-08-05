@@ -191,18 +191,45 @@ PY
 
 #### Aba "Administração" (só administrador)
 
-Quem entra com o papel `administrador` ganha uma terceira aba com três blocos:
-cadastrar obra, cadastrar usuário e conceder a um usuário acesso a uma obra. A UI
-descobre o papel por `GET /auth/me` — o JWT carrega apenas `sub`, `type`, `iat` e
-`exp`, sem papel. Os demais papéis não veem a aba.
+Quem entra com o papel `administrador` ganha uma terceira aba. A UI descobre o papel
+por `GET /auth/me` — o JWT carrega apenas `sub`, `type`, `iat` e `exp`, sem papel. Os
+demais papéis não veem a aba.
+
+**Cadastrar:** obra, usuário, e conceder a um usuário acesso a uma obra.
+
+**Remover e editar:**
+
+| Ação | O que acontece de fato |
+| --- | --- |
+| Revogar acesso a uma obra | Remoção real do vínculo `user_obra`. Não há histórico a preservar aqui. |
+| Alterar papel do usuário | `PATCH /users/{id}`. Muda a autorização na hora, na requisição seguinte. |
+| Desativar / reativar usuário | `is_active`. Tira o login imediatamente e **preserva** autoria dos documentos, trilha de auditoria e vínculos com obras. Reativar devolve tudo. |
+| Arquivar / restaurar obra | `is_deleted` na obra. Ela sai das listagens de todo mundo e deixa de aceitar documentos novos; documentos, arquivos no MinIO e vínculos ficam intactos e voltam ao restaurar. |
+
+Nada é apagado do banco por essas ações, e isso é deliberado: `documents.criado_por` e
+`audit_logs.actor_id` referenciam `users.id` sem `ON DELETE`, e o `/auth/login` grava
+auditoria — então apagar um usuário que já entrou uma vez violaria integridade
+referencial ou destruiria a trilha, que é imutável por contrato. Arquivar obra em vez de
+apagar evita o outro lado do problema: `documents.obra_id` tem `ON DELETE CASCADE`, então
+um `DELETE` na obra apagaria os documentos em silêncio e deixaria os arquivos órfãos no
+MinIO, que nenhum código remove.
+
+Obra arquivada some via [app/scope.py](app/scope.py), o funil por onde toda query de
+obra e documento passa — inclusive para `administrador` e `diretor`, que têm acesso
+global. Para alcançar uma obra arquivada e restaurá-la existe `GET /obras?arquivadas=true`,
+restrito a administrador.
+
+**Um administrador não consegue reduzir os próprios privilégios** (desativar a própria
+conta ou tirar de si o papel de administrador): as duas coisas responderiam 403. É a
+única via capaz de deixar o sistema sem ninguém que o administre — um admin agindo sobre
+*outro* admin continua sendo um admin ativo depois da ação.
 
 A concessão de acesso só muda o que `engenheiro` e `financeiro` enxergam:
-`administrador` e `diretor` já têm acesso global a todas as obras
-([app/scope.py](app/scope.py)).
+`administrador` e `diretor` já têm acesso global a todas as obras.
 
-O `diretor` **não** vê a aba. As três operações são `require_admin` na API, então
-uma aba visível para ele teria todos os botões devolvendo 403. Para mudar isso é
-preciso ampliar a autorização de `POST /obras` e `PUT /obras/{obra}/users/{user}`.
+O `diretor` **não** vê a aba. As operações são `require_admin` na API, então uma aba
+visível para ele teria todos os botões devolvendo 403. Para mudar isso é preciso ampliar
+a autorização de `POST /obras`, `POST /users` e das rotas de vínculo.
 
 #### Erros da API na interface
 

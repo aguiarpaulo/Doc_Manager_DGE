@@ -90,6 +90,46 @@ def grant_obra_access(token: str, obra_id: str, user_id: str) -> None:
     resp.raise_for_status()
 
 
+def revoke_obra_access(token: str, obra_id: str, user_id: str) -> None:
+    resp = requests.delete(
+        f"{BASE_URL}/obras/{obra_id}/users/{user_id}", headers=_auth(token), timeout=TIMEOUT
+    )
+    resp.raise_for_status()
+
+
+def update_user(token: str, user_id: str, **campos) -> dict:
+    """Patch a user's role and/or active flag; only the fields passed are sent."""
+    resp = requests.patch(
+        f"{BASE_URL}/users/{user_id}", headers=_auth(token), json=campos, timeout=TIMEOUT
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def archive_obra(token: str, obra_id: str) -> None:
+    resp = requests.delete(f"{BASE_URL}/obras/{obra_id}", headers=_auth(token), timeout=TIMEOUT)
+    resp.raise_for_status()
+
+
+def restore_obra(token: str, obra_id: str) -> dict:
+    resp = requests.post(
+        f"{BASE_URL}/obras/{obra_id}/restore", headers=_auth(token), timeout=TIMEOUT
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def list_archived_obras(token: str) -> list[dict]:
+    resp = requests.get(
+        f"{BASE_URL}/obras",
+        headers=_auth(token),
+        params={"arquivadas": True},
+        timeout=TIMEOUT,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def search_documents(token: str, **filters) -> list[dict]:
     params = {k: v for k, v in filters.items() if v}
     resp = requests.get(

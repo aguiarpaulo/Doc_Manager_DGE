@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db, require_admin
 from app.models.obra import Obra
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.obra import ObraCreate, ObraRead, ObraUpdate
 from app.scope import can_access_obra, scope_obra_query
 
@@ -54,11 +54,46 @@ def update_obra(
 
 @router.get("", response_model=list[ObraRead])
 def list_obras(
+    arquivadas: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[Obra]:
+    if arquivadas:
+        # Archived obras are out of scope for everyone, so reaching them to restore one
+        # is an administrative act, not a scoped read.
+        if current_user.role is not Role.ADMINISTRADOR:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permissão insuficiente para esta ação",
+            )
+        return list(db.execute(select(Obra).where(Obra.is_deleted.is_(True))).scalars().all())
     query = scope_obra_query(select(Obra), current_user)
     return list(db.execute(query).scalars().all())
+
+
+@router.delete("/{obra_id}", status_code=status.HTTP_204_NO_CONTENT)
+def archive_obra(
+    obra_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> None:
+    """Archive the obra. Its documents, files and assignments are all left in place."""
+    obra = _get_obra_or_404(db, obra_id)
+    obra.is_deleted = True
+    db.commit()
+
+
+@router.post("/{obra_id}/restore", response_model=ObraRead)
+def restore_obra(
+    obra_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> Obra:
+    obra = _get_obra_or_404(db, obra_id)
+    obra.is_deleted = False
+    db.commit()
+    db.refresh(obra)
+    return obra
 
 
 @router.get("/{obra_id}", response_model=ObraRead)

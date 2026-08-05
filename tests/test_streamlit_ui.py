@@ -79,6 +79,11 @@ def _dashboard(monkeypatch, role: str = "engenheiro", **overrides) -> AppTest:
         api_client, "create_user", lambda token, email, password, role: {"id": "u-9"}
     )
     monkeypatch.setattr(api_client, "grant_obra_access", lambda token, obra_id, user_id: None)
+    monkeypatch.setattr(api_client, "revoke_obra_access", lambda token, obra_id, user_id: None)
+    monkeypatch.setattr(api_client, "update_user", lambda token, user_id, **campos: {"id": user_id})
+    monkeypatch.setattr(api_client, "archive_obra", lambda token, obra_id: None)
+    monkeypatch.setattr(api_client, "restore_obra", lambda token, obra_id: None)
+    monkeypatch.setattr(api_client, "list_archived_obras", lambda token: [])
     monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
     monkeypatch.setattr(api_client, "download_version", lambda token, doc, ver: (PNG, "image/png"))
@@ -144,6 +149,13 @@ def test_ui_shows_login_when_unauthenticated():
 def test_ui_login_authenticates_against_api(monkeypatch):
     monkeypatch.setattr(
         api_client, "login", lambda email, password, mfa=None: {"access_token": "tok"}
+    )
+    # The successful login reruns straight into the dashboard, which resolves the caller
+    # via /auth/me; without this stub the test reaches for a real API on localhost:8000.
+    monkeypatch.setattr(
+        api_client,
+        "me",
+        lambda token: {"id": "me", "email": "ana@example.com", "role": "engenheiro"},
     )
     monkeypatch.setattr(api_client, "search_documents", lambda token, **kw: [])
     monkeypatch.setattr(api_client, "list_obras", lambda token: OBRAS)
@@ -434,6 +446,123 @@ def test_ui_shows_the_api_message_when_the_email_is_already_registered(monkeypat
 
     assert not at.exception
     assert any("E-mail já cadastrado" in error.value for error in at.error)
+
+
+def test_ui_revokes_the_chosen_users_access_to_the_chosen_obra(monkeypatch):
+    revogados = []
+
+    at = _dashboard(
+        monkeypatch,
+        role="administrador",
+        revoke_obra_access=lambda token, obra_id, user_id: revogados.append((obra_id, user_id)),
+    ).run()
+    at.selectbox(key="admin_revoke_obra").set_value(OBRAS[1]["id"])
+    at.selectbox(key="admin_revoke_user").set_value(USERS[1]["id"])
+    at = next(b for b in at.button if b.label == "Revogar acesso").click().run()
+
+    assert not at.exception
+    assert revogados == [(OBRAS[1]["id"], USERS[1]["id"])]
+
+
+def test_ui_changes_the_role_of_the_chosen_user(monkeypatch):
+    recebido = {}
+
+    def fake_update_user(token, user_id, **campos):
+        recebido.update(user_id=user_id, **campos)
+        return {"id": user_id}
+
+    at = _dashboard(monkeypatch, role="administrador", update_user=fake_update_user).run()
+    at.selectbox(key="admin_role_user").set_value(USERS[0]["id"])
+    at.selectbox(key="admin_role_value").set_value("diretor")
+    at = next(b for b in at.button if b.label == "Alterar papel").click().run()
+
+    assert not at.exception
+    assert recebido == {"user_id": USERS[0]["id"], "role": "diretor"}
+
+
+def test_ui_deactivates_the_chosen_user_without_touching_their_role(monkeypatch):
+    recebido = {}
+
+    def fake_update_user(token, user_id, **campos):
+        recebido.update(user_id=user_id, **campos)
+        return {"id": user_id}
+
+    at = _dashboard(monkeypatch, role="administrador", update_user=fake_update_user).run()
+    at.selectbox(key="admin_status_user").set_value(USERS[1]["id"])
+    at = next(b for b in at.button if b.label == "Desativar usuário").click().run()
+
+    assert not at.exception
+    assert recebido == {"user_id": USERS[1]["id"], "is_active": False}
+
+
+def test_ui_reactivates_a_deactivated_user(monkeypatch):
+    recebido = {}
+    inativos = [
+        {"id": "user-3", "email": "carla@example.com", "role": "engenheiro", "is_active": False}
+    ]
+
+    def fake_update_user(token, user_id, **campos):
+        recebido.update(user_id=user_id, **campos)
+        return {"id": user_id}
+
+    at = _dashboard(
+        monkeypatch,
+        role="administrador",
+        list_users=lambda token: USERS + inativos,
+        update_user=fake_update_user,
+    ).run()
+    # The button label follows the selected user's state, so the tree has to be rebuilt
+    # before "Reativar usuário" exists at all.
+    at.selectbox(key="admin_status_user").set_value("user-3")
+    at = at.run()
+    at = next(b for b in at.button if b.label == "Reativar usuário").click().run()
+
+    assert not at.exception
+    assert recebido == {"user_id": "user-3", "is_active": True}
+
+
+def test_ui_archives_the_chosen_obra(monkeypatch):
+    arquivadas = []
+
+    at = _dashboard(
+        monkeypatch,
+        role="administrador",
+        archive_obra=lambda token, obra_id: arquivadas.append(obra_id),
+    ).run()
+    at.selectbox(key="admin_archive_obra").set_value(OBRAS[1]["id"])
+    at = next(b for b in at.button if b.label == "Arquivar obra").click().run()
+
+    assert not at.exception
+    assert arquivadas == [OBRAS[1]["id"]]
+
+
+def test_ui_restores_an_archived_obra(monkeypatch):
+    restauradas = []
+    arquivada = {"id": "33333333-3333-3333-3333-333333333333", "nome": "Obra 03"}
+
+    at = _dashboard(
+        monkeypatch,
+        role="administrador",
+        list_archived_obras=lambda token: [arquivada],
+        restore_obra=lambda token, obra_id: restauradas.append(obra_id),
+    ).run()
+    at.selectbox(key="admin_restore_obra").set_value(arquivada["id"])
+    at = next(b for b in at.button if b.label == "Restaurar obra").click().run()
+
+    assert not at.exception
+    assert restauradas == [arquivada["id"]]
+
+
+def test_ui_shows_the_api_message_when_the_administrator_tries_to_demote_themselves(monkeypatch):
+    def rejecting_update_user(token, user_id, **campos):
+        raise _http_error(403, {"detail": "Não é permitido reduzir os próprios privilégios"})
+
+    at = _dashboard(monkeypatch, role="administrador", update_user=rejecting_update_user).run()
+    at.selectbox(key="admin_role_user").set_value(USERS[0]["id"])
+    at = next(b for b in at.button if b.label == "Alterar papel").click().run()
+
+    assert not at.exception
+    assert any("reduzir os próprios privilégios" in error.value for error in at.error)
 
 
 if __name__ == "__main__":  # pragma: no cover
