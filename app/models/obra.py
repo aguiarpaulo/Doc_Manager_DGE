@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Table
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -25,6 +25,8 @@ class Obra(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
     )
+    # Archiving is reversible on purpose: documents and assignments are left untouched.
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     users: Mapped[list["User"]] = relationship(  # noqa: F821
         secondary=user_obra, back_populates="obras"

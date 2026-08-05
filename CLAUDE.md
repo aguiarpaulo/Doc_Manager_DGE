@@ -71,7 +71,29 @@ access scope) are injected via `app/dependencies.py`.
   all obras; Engenheiro/Financeiro only see obras they're assigned to via the
   N:N user↔obra relation. This filtering must be applied in every
   document/obra query, not just enforced at the router layer — a role check
-  alone does not confine an Engenheiro to their assigned obras.
+  alone does not confine an Engenheiro to their assigned obras. All three
+  helpers here also drop archived obras (`Obra.is_deleted`), *including* for the
+  globally-scoped roles — that single funnel is what makes archiving hide an obra
+  everywhere instead of merely flagging it. `search_documents` joins Obra for the
+  same reason: the Admin/Diretor path skipped obra filtering entirely, so without
+  the join their document list would still show an archived obra's documents.
+
+**Nothing user- or obra-shaped is ever hard-deleted, and the FKs are why.**
+`documents.criado_por` and `audit_logs.actor_id` reference `users.id` with no
+`ON DELETE`, and `/auth/login` writes an audit row — so any user who has logged in
+even once cannot be deleted without violating integrity or destroying the immutable
+trail. Deactivation (`is_active`) is the supported answer, and it deliberately keeps
+authorship, audit and obra assignments so reactivation restores everything.
+Conversely `documents.obra_id` *does* cascade, so a real `DELETE` on an obra would
+silently take its documents with it and orphan the MinIO objects, which nothing
+cleans up; obras are archived (`is_deleted`) instead. `GET /obras?arquivadas=true`
+is admin-only and exists solely so an archived obra stays reachable for restore.
+
+**An administrator cannot reduce their own privileges** (`app/api/users.py`):
+self-deactivation and stripping one's own administrator role both 403. Acting on a
+*different* admin is always safe — the caller is still an active admin afterwards —
+so self-action is the only path that can leave the system with zero administrators.
+A "last active administrator" check would be unreachable code.
 
 **Document lifecycle** spans several models that all key off `document_id`:
 `app/models/document.py` (metadata: nome, obra_id, categoria, status,
@@ -137,7 +159,12 @@ Rendering dispatches on the `Content-Type` the download endpoint returns, never
 on the filename. "Administração" only exists for `administrador` — the UI learns
 the role from `GET /auth/me` because the JWT carries only `sub`/`type`/`iat`/`exp`.
 That tab stays reachable with zero obras on purpose: it is where the first one
-is created, so an early return there would deadlock a fresh install.
+is created, so an early return there would deadlock a fresh install. For the same
+reason the user-management and restore-obra blocks render *before* the guard on
+`nome_por_id`: neither depends on an obra existing, and an install whose only obra
+was archived must still be able to restore it. The activate/deactivate control sits
+outside an `st.form` because its button label follows the selected user's state, and
+a form defers the rerun that would update it.
 
 **Testing the UI has a hard boundary.** `tests/test_streamlit_ui.py` drives the
 real app through Streamlit's `AppTest`, but `AppTest` runs without
@@ -149,6 +176,16 @@ missing the extra degrades to a download button instead of killing the page, and
 no test asserts that a PDF visually rendered — `scripts/smoke_streamlit_ui.py`
 covers everything up to that point against the live stack, and the pixels need a
 browser.
+
+**Every test in that file which reaches the dashboard must stub `api_client.me`.**
+`render_dashboard` calls it first thing to learn the caller's role, so a test that
+forgets it makes a real HTTP request to `localhost:8000` and then passes or fails
+depending on whether a stack happens to be running — in a suite whose whole point is
+needing no services. `test_ui_login_authenticates_against_api` had exactly this bug
+and read as "flaky" until it was run with Docker stopped. The `_dashboard` helper
+stubs `me` along with every other client call; prefer it over hand-rolling stubs,
+and do not pass `raising=False` to `monkeypatch.setattr` there — the default strict
+behaviour is what catches a stub whose name no longer matches the client.
 
 Related lesson recorded in `delivery-graph/demands/DEM-001/evidence/NODE-015/`:
 that node's contract demanded a *manual* smoke, but the evidence filed was pytest
@@ -164,10 +201,10 @@ return 422. Do not file a mocked test run as smoke evidence.
 - **No test coverage measurement** (`pytest-cov` not configured).
 - **No automated end-to-end tests** against real Postgres/MinIO — tests use
   in-memory fakes; the `scripts/smoke_*.py` scripts are manual-only.
-- **`diretor` cannot administer anything.** `POST /obras`, `POST /users` and
-  `PUT/DELETE /obras/{obra}/users/{user}` are all `require_admin`, so the
-  "Administração" tab is administrator-only. Widening it to Diretor means
-  changing those authorization rules, not just the UI condition.
+- **`diretor` cannot administer anything.** `POST /obras`, `POST /users`,
+  `PATCH /users/{id}`, `DELETE /obras/{id}` and `PUT/DELETE /obras/{obra}/users/{user}`
+  are all `require_admin`, so the "Administração" tab is administrator-only. Widening
+  it to Diretor means changing those authorization rules, not just the UI condition.
 - **The login screen leaves orphan widgets in `AppTest`.** `render_login` ends in
   `st.rerun()`, and the harness keeps nodes from the pre-rerun pass, which breaks
   the next interaction. A real browser replaces the tree, so this is harness-only;

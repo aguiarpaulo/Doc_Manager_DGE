@@ -56,3 +56,66 @@ def test_deactivated_user_cannot_authenticate(client, auth_headers, make_user):
     # The deactivated user can no longer log in.
     login = client.post("/auth/login", json={"email": "alvo@example.com", "password": "pw123456"})
     assert login.status_code == 401
+
+
+def _login(client, email, password="pw123456"):
+    return client.post("/auth/login", json={"email": email, "password": password})
+
+
+def test_reactivating_a_user_gives_their_login_back(client, auth_headers, make_user):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+    target = make_user(email="alvo@example.com", password="pw123456", role=Role.FINANCEIRO)
+    client.patch(f"/users/{target.id}", headers=admin, json={"is_active": False})
+    assert _login(client, "alvo@example.com").status_code == 401
+
+    client.patch(f"/users/{target.id}", headers=admin, json={"is_active": True})
+
+    assert _login(client, "alvo@example.com").status_code == 200
+
+
+def test_changing_a_users_role_changes_what_they_may_do(client, auth_headers, make_user):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+    target = make_user(email="eng@example.com", password="pw123456", role=Role.ENGENHEIRO)
+    eng_token = _login(client, "eng@example.com").json()["access_token"]
+    eng_h = {"Authorization": f"Bearer {eng_token}"}
+    assert client.post("/obras", headers=eng_h, json={"nome": "Obra X"}).status_code == 403
+
+    client.patch(f"/users/{target.id}", headers=admin, json={"role": "administrador"})
+
+    assert client.post("/obras", headers=eng_h, json={"nome": "Obra X"}).status_code == 201
+
+
+def test_administrator_cannot_deactivate_their_own_account(client, make_user, headers_for):
+    """Otherwise one click locks the system's own administrator out of it."""
+    admin = make_user(email="admin@example.com", password="pw123456", role=Role.ADMINISTRADOR)
+    admin_h = headers_for("admin@example.com", "pw123456")
+
+    resp = client.patch(f"/users/{admin.id}", headers=admin_h, json={"is_active": False})
+
+    assert resp.status_code == 403
+    assert _login(client, "admin@example.com").status_code == 200
+
+
+def test_administrator_cannot_strip_their_own_administrator_role(client, make_user, headers_for):
+    """Self-demotion is the one path that can leave the system with zero administrators."""
+    admin = make_user(email="admin@example.com", password="pw123456", role=Role.ADMINISTRADOR)
+    admin_h = headers_for("admin@example.com", "pw123456")
+
+    resp = client.patch(f"/users/{admin.id}", headers=admin_h, json={"role": "engenheiro"})
+
+    assert resp.status_code == 403
+    assert client.post("/obras", headers=admin_h, json={"nome": "Obra X"}).status_code == 201
+
+
+def test_an_administrator_may_still_deactivate_a_different_administrator(
+    client, make_user, headers_for
+):
+    """The self-guard must not become a blanket ban on administering other admins."""
+    make_user(email="admin@example.com", password="pw123456", role=Role.ADMINISTRADOR)
+    other = make_user(email="admin2@example.com", password="pw123456", role=Role.ADMINISTRADOR)
+    admin_h = headers_for("admin@example.com", "pw123456")
+
+    resp = client.patch(f"/users/{other.id}", headers=admin_h, json={"is_active": False})
+
+    assert resp.status_code == 200
+    assert _login(client, "admin2@example.com").status_code == 401

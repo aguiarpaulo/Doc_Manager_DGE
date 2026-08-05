@@ -152,6 +152,11 @@ def render_documents_tab(token: str, nome_por_id: dict[str, str]) -> None:
         render_viewer(token, open_document)
 
 
+def _user_label(user: dict) -> str:
+    sufixo = "" if user.get("is_active", True) else " — inativo"
+    return f"{user['email']} ({user['role']}){sufixo}"
+
+
 def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
     st.subheader("Nova obra")
     with st.form("admin_obra"):
@@ -178,24 +183,95 @@ def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
             else:
                 st.success(f"Usuário {email} cadastrado.")
 
-    st.subheader("Conceder acesso a uma obra")
-    st.caption(
-        "Administrador e diretor já enxergam todas as obras; a atribuição só muda o que "
-        "engenheiro e financeiro conseguem ver."
-    )
-    if not nome_por_id:
-        st.info("Cadastre uma obra antes de conceder acesso.")
-        return
     try:
         users = api_client.list_users(token)
     except requests.HTTPError as exc:
         st.error(api_client.error_message(exc))
         return
+
+    por_id = {user["id"]: user for user in users}
+    email_por_id = {uid: _user_label(user) for uid, user in por_id.items()}
+
+    # User management first: none of it depends on an obra existing.
+    if users:
+        st.subheader("Alterar papel do usuário")
+        with st.form("admin_role"):
+            role_user_id = st.selectbox(
+                "Usuário",
+                list(email_por_id),
+                format_func=lambda uid: email_por_id[uid],
+                key="admin_role_user",
+            )
+            novo_papel = st.selectbox("Novo papel", PAPEIS, key="admin_role_value")
+            if st.form_submit_button("Alterar papel"):
+                try:
+                    api_client.update_user(token, role_user_id, role=novo_papel)
+                except requests.HTTPError as exc:
+                    st.error(api_client.error_message(exc))
+                else:
+                    st.success(f"{email_por_id[role_user_id]} agora é {novo_papel}.")
+
+        st.subheader("Ativar ou desativar usuário")
+        st.caption(
+            "Desativar tira o acesso ao sistema na hora, mas preserva a autoria dos "
+            "documentos, a trilha de auditoria e os vínculos com obras — reativar devolve tudo."
+        )
+        # Outside a form on purpose: the button label follows the selected user's state.
+        status_user_id = st.selectbox(
+            "Usuário",
+            list(email_por_id),
+            format_func=lambda uid: email_por_id[uid],
+            key="admin_status_user",
+        )
+        esta_ativo = por_id[status_user_id].get("is_active", True)
+        if st.button(
+            "Desativar usuário" if esta_ativo else "Reativar usuário", key="admin_status_btn"
+        ):
+            try:
+                api_client.update_user(token, status_user_id, is_active=not esta_ativo)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                acao = "desativado" if esta_ativo else "reativado"
+                st.success(f"{email_por_id[status_user_id]} {acao}.")
+
+    st.subheader("Restaurar obra arquivada")
+    try:
+        arquivadas = api_client.list_archived_obras(token)
+    except requests.HTTPError as exc:
+        st.error(api_client.error_message(exc))
+        arquivadas = []
+    if arquivadas:
+        arquivada_por_id = {obra["id"]: obra["nome"] for obra in arquivadas}
+        with st.form("admin_restore"):
+            restore_id = st.selectbox(
+                "Obra arquivada",
+                list(arquivada_por_id),
+                format_func=lambda oid: arquivada_por_id[oid],
+                key="admin_restore_obra",
+            )
+            if st.form_submit_button("Restaurar obra"):
+                try:
+                    api_client.restore_obra(token, restore_id)
+                except requests.HTTPError as exc:
+                    st.error(api_client.error_message(exc))
+                else:
+                    st.success(f"Obra {arquivada_por_id[restore_id]} restaurada.")
+    else:
+        st.caption("Nenhuma obra arquivada.")
+
+    if not nome_por_id:
+        st.info("Cadastre uma obra para conceder acessos ou arquivar.")
+        return
     if not users:
         st.info("Nenhum usuário cadastrado ainda.")
         return
 
-    email_por_id = {user["id"]: f"{user['email']} ({user['role']})" for user in users}
+    st.subheader("Conceder acesso a uma obra")
+    st.caption(
+        "Administrador e diretor já enxergam todas as obras; a atribuição só muda o que "
+        "engenheiro e financeiro conseguem ver."
+    )
     with st.form("admin_grant"):
         obra_id = st.selectbox(
             "Obra",
@@ -216,6 +292,50 @@ def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
                 st.error(api_client.error_message(exc))
             else:
                 st.success(f"{email_por_id[user_id]} agora acessa {nome_por_id[obra_id]}.")
+
+    st.subheader("Revogar acesso a uma obra")
+    with st.form("admin_revoke"):
+        revoke_obra_id = st.selectbox(
+            "Obra",
+            list(nome_por_id),
+            format_func=lambda oid: nome_por_id[oid],
+            key="admin_revoke_obra",
+        )
+        revoke_user_id = st.selectbox(
+            "Usuário",
+            list(email_por_id),
+            format_func=lambda uid: email_por_id[uid],
+            key="admin_revoke_user",
+        )
+        if st.form_submit_button("Revogar acesso"):
+            try:
+                api_client.revoke_obra_access(token, revoke_obra_id, revoke_user_id)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                st.success(
+                    f"{email_por_id[revoke_user_id]} não acessa mais {nome_por_id[revoke_obra_id]}."
+                )
+
+    st.subheader("Arquivar obra")
+    st.caption(
+        "A obra sai das listagens e deixa de aceitar documentos novos. Nada é apagado: "
+        "documentos, arquivos e vínculos continuam lá e voltam se a obra for restaurada."
+    )
+    with st.form("admin_archive"):
+        archive_id = st.selectbox(
+            "Obra",
+            list(nome_por_id),
+            format_func=lambda oid: nome_por_id[oid],
+            key="admin_archive_obra",
+        )
+        if st.form_submit_button("Arquivar obra"):
+            try:
+                api_client.archive_obra(token, archive_id)
+            except requests.HTTPError as exc:
+                st.error(api_client.error_message(exc))
+            else:
+                st.success(f"Obra {nome_por_id[archive_id]} arquivada.")
 
 
 def render_dashboard() -> None:
