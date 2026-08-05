@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.user import Role, User
 from app.security import hash_password
+from app.usernames import normalize_username
 
 MIN_PASSWORD_LENGTH = 12
 
@@ -17,11 +18,17 @@ MIN_PASSWORD_LENGTH = 12
 _email_adapter = TypeAdapter(EmailStr)
 
 
-def ensure_first_admin(db: Session, email: str | None, password: str | None) -> bool:
+def ensure_first_admin(
+    db: Session,
+    email: str | None,
+    password: str | None,
+    username: str | None = None,
+) -> bool:
     """Create an administrator when the system has none.
 
     Returns True when a user was created. Never touches an existing administrator, so
-    it is safe to run on every restart.
+    it is safe to run on every restart. `username` falls back to the e-mail's local
+    part so an existing deployment's .env keeps working without a new variable.
     """
     if not email or not password:
         return False
@@ -37,11 +44,21 @@ def ensure_first_admin(db: Session, email: str | None, password: str | None) -> 
     except ValidationError as exc:
         raise ValueError(f"e-mail inválido para o administrador inicial: {email}") from exc
 
+    # Fails loudly rather than seeding an administrator the API would refuse to recreate.
+    login = normalize_username(username or email.split("@", 1)[0])
+
     if len(password) < MIN_PASSWORD_LENGTH:
         raise ValueError(
             f"a senha do administrador inicial precisa de ao menos {MIN_PASSWORD_LENGTH} caracteres"
         )
 
-    db.add(User(email=email, hashed_password=hash_password(password), role=Role.ADMINISTRADOR))
+    db.add(
+        User(
+            username=login,
+            email=email,
+            hashed_password=hash_password(password),
+            role=Role.ADMINISTRADOR,
+        )
+    )
     db.commit()
     return True

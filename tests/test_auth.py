@@ -4,11 +4,12 @@ from app.models.user import User
 from app.security import ACCESS_TOKEN, REFRESH_TOKEN, decode_token
 
 EMAIL = "ana@example.com"
+USERNAME = "ana"
 PASSWORD = "correct-horse"
 
 
-def _login(client, email=EMAIL, password=PASSWORD):
-    return client.post("/auth/login", json={"email": email, "password": password})
+def _login(client, username=USERNAME, password=PASSWORD):
+    return client.post("/auth/login", json={"username": username, "password": password})
 
 
 def test_login_valid_returns_access_and_refresh(client, make_user):
@@ -28,10 +29,18 @@ def test_login_wrong_password_is_401_without_leaking(client, make_user):
     assert resp.json()["detail"] == "Credenciais inválidas"
 
 
-def test_login_unknown_email_same_response_as_wrong_password(client):
-    resp = _login(client, email="ghost@example.com", password="whatever")
+def test_login_unknown_user_same_response_as_wrong_password(client):
+    resp = _login(client, username="ghost", password="whatever")
     assert resp.status_code == 401
-    # Identical message to the wrong-password case: does not reveal the e-mail is unknown.
+    # Identical message to the wrong-password case: does not reveal the account is unknown.
+    assert resp.json()["detail"] == "Credenciais inválidas"
+
+
+def test_login_with_a_malformed_username_is_denied_not_a_validation_error(client):
+    """A 422 here would teach an anonymous caller the naming rule."""
+    resp = _login(client, username="fulano de tal", password="whatever")
+
+    assert resp.status_code == 401
     assert resp.json()["detail"] == "Credenciais inválidas"
 
 

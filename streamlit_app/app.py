@@ -17,26 +17,50 @@ from streamlit_app import api_client
 CATEGORIAS = ["contrato", "projeto", "nota_fiscal", "licenca", "laudo", "outros"]
 PAPEIS = ["administrador", "diretor", "engenheiro", "financeiro"]
 ADMIN_ROLE = "administrador"
+REGRA_USUARIO = (
+    "3 a 32 caracteres, sem espaços. Letras, números, ponto, hífen e sublinhado. "
+    "Exemplo: pauloaguiar"
+)
+# Mirrors ALLOWED_CONTENT_TYPES in app/services/uploads.py; the API is the real gate.
+EXTENSOES = ["pdf", "png", "jpg", "jpeg", "txt", "doc", "docx", "xls", "xlsx"]
+
+# Status colours carry a label too: colour alone is not an accessible signal.
+STATUS_APRESENTACAO = {
+    "enviado": ("gray", "Enviado"),
+    "em_analise": ("orange", "Em análise"),
+    "aprovado": ("green", "Aprovado"),
+    "rejeitado": ("red", "Rejeitado"),
+}
 
 st.set_page_config(page_title="GED DGE", page_icon="📄", layout="wide")
-st.title("📄 GED DGE — Gestão de Documentos")
+st.title("GED DGE")
+st.caption("Gestão Eletrônica de Documentos de Obras")
+st.divider()
 
 if "token" not in st.session_state:
     st.session_state.token = None
 
 
+def status_badge(status: str) -> str:
+    cor, rotulo = STATUS_APRESENTACAO.get(status, ("gray", status))
+    return f":{cor}-background[**{rotulo}**]"
+
+
 def render_login() -> None:
-    st.subheader("Entrar")
-    email = st.text_input("E-mail", key="email")
-    password = st.text_input("Senha", type="password", key="password")
-    mfa = st.text_input("Código MFA (se ativo)", key="mfa")
-    if st.button("Entrar", key="login_btn"):
-        try:
-            tokens = api_client.login(email, password, mfa or None)
-            st.session_state.token = tokens["access_token"]
-            st.rerun()
-        except Exception:
-            st.error("Falha no login. Verifique as credenciais.")
+    # A login form stretched across a wide layout looks unfinished; hold it to a column.
+    _, meio, _ = st.columns([1, 1.4, 1])
+    with meio:
+        st.subheader("Entrar")
+        username = st.text_input("Usuário", key="username", placeholder="pauloaguiar")
+        password = st.text_input("Senha", type="password", key="password")
+        mfa = st.text_input("Código MFA (se ativo)", key="mfa")
+        if st.button("Entrar", key="login_btn", type="primary", width="stretch"):
+            try:
+                tokens = api_client.login(username, password, mfa or None)
+                st.session_state.token = tokens["access_token"]
+                st.rerun()
+            except Exception:
+                st.error("Falha no login. Verifique as credenciais.")
 
 
 @st.cache_data(show_spinner=False)
@@ -55,7 +79,9 @@ def render_upload_tab(token: str, nome_por_id: dict[str, str]) -> None:
             key="new_obra",
         )
         new_cat = st.selectbox("Categoria", CATEGORIAS, key="new_categoria")
-        uploaded = st.file_uploader("Arquivo (PDF/PNG/JPG)", key="new_file")
+        uploaded = st.file_uploader(
+            "Arquivo (PDF, imagem, Word, Excel ou TXT)", type=EXTENSOES, key="new_file"
+        )
         if st.form_submit_button("Criar e enviar") and new_nome:
             try:
                 doc = api_client.create_document(token, new_nome, new_obra, new_cat)
@@ -89,9 +115,10 @@ def render_viewer(token: str, document: dict | None) -> None:
         return
 
     st.markdown(f"#### {document['nome']}")
+    st.markdown(status_badge(document["status"]))
     st.caption(
-        f"{document['categoria']} · status: {document['status']} "
-        f"· versão {document['current_version']} · incluído em {document['criado_em']}"
+        f"{document['categoria']} · versão {document['current_version']} "
+        f"· incluído em {document['criado_em']}"
     )
     if document["current_version"] < 1:
         st.warning("Este documento ainda não tem arquivo enviado.")
@@ -172,16 +199,22 @@ def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
 
     st.subheader("Novo usuário")
     with st.form("admin_user"):
+        usuario = st.text_input("Usuário (sem espaços)", key="admin_user_nome")
+        st.caption(REGRA_USUARIO)
         email = st.text_input("E-mail", key="admin_user_email")
         senha = st.text_input("Senha", type="password", key="admin_user_senha")
+        senha2 = st.text_input("Confirmar senha", type="password", key="admin_user_senha2")
         papel = st.selectbox("Papel", PAPEIS, key="admin_user_role")
-        if st.form_submit_button("Cadastrar usuário") and email and senha:
-            try:
-                api_client.create_user(token, email, senha, papel)
-            except requests.HTTPError as exc:
-                st.error(api_client.error_message(exc))
+        if st.form_submit_button("Cadastrar usuário") and usuario and email and senha:
+            if senha != senha2:
+                st.error("As senhas não conferem. Digite a mesma senha nos dois campos.")
             else:
-                st.success(f"Usuário {email} cadastrado.")
+                try:
+                    api_client.create_user(token, usuario, email, senha, papel)
+                except requests.HTTPError as exc:
+                    st.error(api_client.error_message(exc))
+                else:
+                    st.success(f"Usuário {usuario} cadastrado.")
 
     try:
         users = api_client.list_users(token)
@@ -338,18 +371,30 @@ def render_admin_tab(token: str, nome_por_id: dict[str, str]) -> None:
                 st.success(f"Obra {nome_por_id[archive_id]} arquivada.")
 
 
+def render_identity_bar(current_user: dict | None) -> None:
+    identidade, sair = st.columns([5, 1])
+    with identidade:
+        if current_user:
+            st.caption(f"**{current_user['username']}** · {current_user['role']}")
+    with sair:
+        if st.button("Sair", key="logout_btn", width="stretch"):
+            st.session_state.token = None
+            st.rerun()
+
+
 def render_dashboard() -> None:
     token = st.session_state.token
-    if st.button("Sair", key="logout_btn"):
-        st.session_state.token = None
-        st.rerun()
 
     try:
         current_user = api_client.me(token)
         obras = api_client.list_obras(token)
     except requests.HTTPError as exc:
+        # Still offer the way out: a stale token must not trap the user on this screen.
+        render_identity_bar(None)
         st.error(api_client.error_message(exc))
         return
+
+    render_identity_bar(current_user)
 
     is_admin = current_user.get("role") == ADMIN_ROLE
     nome_por_id = {obra["id"]: obra["nome"] for obra in obras}

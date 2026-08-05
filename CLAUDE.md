@@ -107,10 +107,24 @@ and does *not* delete prior versions' MinIO objects. Approval
 can never approve/reject their own submission, and approval targets a
 specific version, not the document as a whole.
 
-**Storage** (`app/storage.py`) wraps MinIO: uploads are validated for type
-(PDF/PNG/JPG only) and size (~50MB) before persisting, and a SHA-256 hash
-match within the same obra is flagged as a duplicate rather than silently
-re-stored.
+**Storage** (`app/storage.py`) wraps MinIO: uploads are validated for type and size
+(~50MB) before persisting, and a SHA-256 hash match within the same obra is flagged as
+a duplicate rather than silently re-stored. `ALLOWED_CONTENT_TYPES` in
+`app/services/uploads.py` is the real gate — PDF, PNG, JPEG, plain text, Word and Excel
+— and it matches on the *content type*, never the extension; the `type=` list on the
+Streamlit uploader is convenience only. Only PDF and images have a preview, so anything
+else falls through `render_content` to the download button by design.
+
+**The login credential is `User.username`, not the e-mail.** The rule lives in
+`app/usernames.py` and is shared by `UserCreate` and `ensure_first_admin`, so the seeded
+administrator can never be given a name the API would reject. `LoginRequest.username` is
+a bare `str` rather than the validated type on purpose: a malformed login must come back
+as 401 "wrong credentials", because a 422 would teach an anonymous caller the naming
+rule. The e-mail column stays required — `send_password_reset` needs somewhere to
+deliver, which is the whole reason the field survived the change. Migration
+`b2c3d4e5f6a7` backfills existing rows from the e-mail's local part and disambiguates
+collisions with a numeric suffix; it is PostgreSQL-specific, which is fine because tests
+build their schema from the models on SQLite and never run migrations.
 
 **Auth** (`app/security.py`, `app/api/auth.py`): bcrypt password hashes, JWT
 access + refresh tokens. The token payload is deliberately minimal — `sub`,
@@ -176,6 +190,13 @@ missing the extra degrades to a download button instead of killing the page, and
 no test asserts that a PDF visually rendered — `scripts/smoke_streamlit_ui.py`
 covers everything up to that point against the live stack, and the pixels need a
 browser.
+
+**Visual identity lives in `.streamlit/config.toml`, not in injected CSS.** Square
+corners are `baseRadius`/`buttonRadius = "none"`, which is why `showWidgetBorder` is on:
+with no rounding to separate controls from the page, the border is doing the structural
+work corners normally do. The theme is pinned to `base = "light"` so the palette renders
+as chosen on every desk. Any stub of `api_client.me` must include `username` — the
+identity bar reads it, and a stub without it raises `KeyError` in every dashboard test.
 
 **Every test in that file which reaches the dashboard must stub `api_client.me`.**
 `render_dashboard` calls it first thing to learn the caller's role, so a test that

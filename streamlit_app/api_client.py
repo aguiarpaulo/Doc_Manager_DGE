@@ -40,8 +40,8 @@ def error_message(exc: requests.HTTPError) -> str:
     return str(detail)
 
 
-def login(email: str, password: str, mfa_code: str | None = None) -> dict:
-    payload = {"email": email, "password": password}
+def login(username: str, password: str, mfa_code: str | None = None) -> dict:
+    payload = {"username": username, "password": password}
     if mfa_code:
         payload["mfa_code"] = mfa_code
     resp = requests.post(f"{BASE_URL}/auth/login", json=payload, timeout=TIMEOUT)
@@ -72,11 +72,11 @@ def list_users(token: str) -> list[dict]:
     return resp.json()
 
 
-def create_user(token: str, email: str, password: str, role: str) -> dict:
+def create_user(token: str, username: str, email: str, password: str, role: str) -> dict:
     resp = requests.post(
         f"{BASE_URL}/users",
         headers=_auth(token),
-        json={"email": email, "password": password, "role": role},
+        json={"username": username, "email": email, "password": password, "role": role},
         timeout=TIMEOUT,
     )
     resp.raise_for_status()

@@ -5,9 +5,11 @@ import uuid
 from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.user import Role
+from app.usernames import Username
 
 
 class UserCreate(BaseModel):
+    username: Username
     email: EmailStr
     password: str
     role: Role
@@ -22,6 +24,7 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
+    username: str
     email: EmailStr
     role: Role
     is_active: bool

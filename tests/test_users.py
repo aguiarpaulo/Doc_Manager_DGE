@@ -1,5 +1,7 @@
 """NODE-003 contract: admin-only user CRUD, invalid role rejected, deactivated cannot log in."""
 
+import pytest
+
 from app.models.user import Role
 
 
@@ -8,10 +10,16 @@ def test_admin_creates_user_with_role(client, auth_headers):
     resp = client.post(
         "/users",
         headers=headers,
-        json={"email": "novo@example.com", "password": "pw123456", "role": "engenheiro"},
+        json={
+            "username": "novo",
+            "email": "novo@example.com",
+            "password": "pw123456",
+            "role": "engenheiro",
+        },
     )
     assert resp.status_code == 201
     body = resp.json()
+    assert body["username"] == "novo"
     assert body["email"] == "novo@example.com"
     assert body["role"] == "engenheiro"
     assert body["is_active"] is True
@@ -22,7 +30,12 @@ def test_non_admin_cannot_create_user(client, auth_headers):
     resp = client.post(
         "/users",
         headers=headers,
-        json={"email": "novo@example.com", "password": "pw123456", "role": "engenheiro"},
+        json={
+            "username": "novo",
+            "email": "novo@example.com",
+            "password": "pw123456",
+            "role": "engenheiro",
+        },
     )
     assert resp.status_code == 403
 
@@ -30,7 +43,12 @@ def test_non_admin_cannot_create_user(client, auth_headers):
 def test_unauthenticated_cannot_create_user(client):
     resp = client.post(
         "/users",
-        json={"email": "novo@example.com", "password": "pw123456", "role": "engenheiro"},
+        json={
+            "username": "novo",
+            "email": "novo@example.com",
+            "password": "pw123456",
+            "role": "engenheiro",
+        },
     )
     # No credentials at all -> 401 Unauthorized (vs 403 for an authenticated non-admin).
     assert resp.status_code == 401
@@ -41,7 +59,12 @@ def test_invalid_role_is_rejected_by_validation(client, auth_headers):
     resp = client.post(
         "/users",
         headers=headers,
-        json={"email": "novo@example.com", "password": "pw123456", "role": "presidente"},
+        json={
+            "username": "novo",
+            "email": "novo@example.com",
+            "password": "pw123456",
+            "role": "presidente",
+        },
     )
     assert resp.status_code == 422
 
@@ -54,29 +77,79 @@ def test_deactivated_user_cannot_authenticate(client, auth_headers, make_user):
     assert patch.status_code == 200
     assert patch.json()["is_active"] is False
     # The deactivated user can no longer log in.
-    login = client.post("/auth/login", json={"email": "alvo@example.com", "password": "pw123456"})
+    login = client.post("/auth/login", json={"username": "alvo", "password": "pw123456"})
     assert login.status_code == 401
 
 
-def _login(client, email, password="pw123456"):
-    return client.post("/auth/login", json={"email": email, "password": password})
+def _login(client, username, password="pw123456"):
+    return client.post("/auth/login", json={"username": username, "password": password})
+
+
+def _create(client, headers, **overrides):
+    payload = {
+        "username": "pauloaguiar",
+        "email": "paulo@example.com",
+        "password": "pw123456",
+        "role": "engenheiro",
+    }
+    payload.update(overrides)
+    return client.post("/users", headers=headers, json=payload)
+
+
+def test_user_logs_in_with_the_username_not_the_email(client, auth_headers):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+    assert _create(client, admin).status_code == 201
+
+    assert _login(client, "pauloaguiar").status_code == 200
+    # The e-mail is still stored, but it is not a credential any more.
+    assert _login(client, "paulo@example.com").status_code == 401
+
+
+@pytest.mark.parametrize(
+    "invalido",
+    ["paulo aguiar", "paulo@example.com", "ab", "paulo!aguiar", "a" * 33, " ", "paulo aguiar "],
+)
+def test_usernames_with_spaces_or_bad_shape_are_rejected(client, auth_headers, invalido):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+
+    resp = _create(client, admin, username=invalido)
+
+    assert resp.status_code == 422
+
+
+def test_username_is_matched_regardless_of_typed_case(client, auth_headers):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+    created = _create(client, admin, username="PauloAguiar")
+
+    assert created.status_code == 201
+    assert created.json()["username"] == "pauloaguiar"
+    assert _login(client, "PAULOAGUIAR").status_code == 200
+
+
+def test_two_users_cannot_share_a_username(client, auth_headers):
+    admin = auth_headers(role=Role.ADMINISTRADOR)
+    assert _create(client, admin).status_code == 201
+
+    repetido = _create(client, admin, username="pauloaguiar", email="outro@example.com")
+
+    assert repetido.status_code == 409
 
 
 def test_reactivating_a_user_gives_their_login_back(client, auth_headers, make_user):
     admin = auth_headers(role=Role.ADMINISTRADOR)
     target = make_user(email="alvo@example.com", password="pw123456", role=Role.FINANCEIRO)
     client.patch(f"/users/{target.id}", headers=admin, json={"is_active": False})
-    assert _login(client, "alvo@example.com").status_code == 401
+    assert _login(client, "alvo").status_code == 401
 
     client.patch(f"/users/{target.id}", headers=admin, json={"is_active": True})
 
-    assert _login(client, "alvo@example.com").status_code == 200
+    assert _login(client, "alvo").status_code == 200
 
 
 def test_changing_a_users_role_changes_what_they_may_do(client, auth_headers, make_user):
     admin = auth_headers(role=Role.ADMINISTRADOR)
     target = make_user(email="eng@example.com", password="pw123456", role=Role.ENGENHEIRO)
-    eng_token = _login(client, "eng@example.com").json()["access_token"]
+    eng_token = _login(client, "eng").json()["access_token"]
     eng_h = {"Authorization": f"Bearer {eng_token}"}
     assert client.post("/obras", headers=eng_h, json={"nome": "Obra X"}).status_code == 403
 
@@ -93,7 +166,7 @@ def test_administrator_cannot_deactivate_their_own_account(client, make_user, he
     resp = client.patch(f"/users/{admin.id}", headers=admin_h, json={"is_active": False})
 
     assert resp.status_code == 403
-    assert _login(client, "admin@example.com").status_code == 200
+    assert _login(client, "admin").status_code == 200
 
 
 def test_administrator_cannot_strip_their_own_administrator_role(client, make_user, headers_for):
@@ -118,4 +191,4 @@ def test_an_administrator_may_still_deactivate_a_different_administrator(
     resp = client.patch(f"/users/{other.id}", headers=admin_h, json={"is_active": False})
 
     assert resp.status_code == 200
-    assert _login(client, "admin2@example.com").status_code == 401
+    assert _login(client, "admin2").status_code == 401
