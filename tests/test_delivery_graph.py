@@ -34,12 +34,20 @@ def test_a_resolved_gap_is_never_blank():
 def test_https_gap_resolution_matches_caddy_implementation():
     caddyfile = (REPO_ROOT / "docker" / "Caddyfile").read_text(encoding="utf-8")
     compose = (REPO_ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    # Caddy moved out of the compose file into the web image when the SPA started
+    # being served from the same origin; it is still what terminates TLS.
+    dockerfile_web = (REPO_ROOT / "docker" / "Dockerfile.web").read_text(encoding="utf-8")
 
     # HTTPS termination is really implemented via Caddy...
     assert "reverse_proxy" in caddyfile
     assert "CADDY_DOMAIN" in caddyfile
-    assert "caddy:" in compose
+    assert "FROM caddy:" in dockerfile_web
+    assert "docker/Dockerfile.web" in compose
     assert "443" in compose
+
+    # ...and the API is published under a prefix the proxy strips, so the SPA and
+    # the API share one origin and no request ever crosses origins.
+    assert "handle_path /api/*" in caddyfile
 
     # ...so the graph must not still list GAP-002 (HTTPS mechanism) as unresolved.
     gap = next(g for g in _load_gaps() if g["id"] == "GAP-002")

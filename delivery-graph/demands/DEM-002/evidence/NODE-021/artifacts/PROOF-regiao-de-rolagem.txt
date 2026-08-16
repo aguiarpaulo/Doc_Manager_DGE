@@ -1,0 +1,84 @@
+# Prova: regiao de rolagem unica e ausencia de rolagem horizontal
+Data: 2026-08-15T23:01:52Z
+
+## Estrategia de rolagem declarada em shell.css
+  5:.shell {
+  10:  height: 100vh;
+  11:  overflow: hidden;
+  14:.shell__cabecalho {
+  25:.shell__marca {
+  30:.shell__identidade {
+  35:.shell__corpo {
+  38:  min-height: 0; /* deixa os filhos encolherem em vez de estourar a grade */
+  39:  overflow: hidden;
+  42:.shell__lista {
+  43:  overflow-y: auto;
+  44:  min-width: 0;
+  49:.shell__painel {
+  52:  min-width: 0;
+  53:  min-height: 0;
+  54:  overflow: hidden;
+  57:.shell__acoes {
+  66:.shell__conteudo {
+  68:  overflow: auto;
+  69:  min-width: 0;
+  70:  min-height: 0;
+  75:.lista-documentos {
+  81:.lista-documentos__item {
+  85:.lista-documentos__link {
+  98:.lista-documentos__link:hover {
+  104:.lista-documentos__link[aria-current="true"] {
+  110:.lista-documentos__ordem {
+  115:.lista-documentos__meta {
+  121:.visualizador__quadro {
+  129:.visualizador__imagem {
+  134:.visualizador__texto {
+  143:.visualizador__sem-previa {
+  149:.estado-vazio {
+  159:    overflow: visible;
+  164:    overflow: visible;
+  168:    overflow-y: visible;
+  175:    overflow: visible;
+
+## Leitura
+  .shell fixa a altura em 100vh e corta o excedente: a PAGINA nao rola.
+  .shell__corpo e .shell__painel usam min-height/min-width 0 para que os
+  filhos encolham em vez de estourar a grade (base de conhecimento 11.3).
+  Sobram exatamente duas regioes rolaveis e nenhuma delas rola no eixo X:
+    .shell__lista    -> overflow-y: auto
+    .shell__conteudo -> overflow: auto
+
+## Ausencia de rolagem horizontal na pagina
+  ocorrencias de overflow-x no projeto:
+    nenhuma (nada forca barra horizontal)
+  largura fixa em px declarada:
+    src/styles/index.css:40:  --border-width: 1px;
+
+## Telas estreitas
+  @media (max-width: 48rem) {
+    .shell {
+      height: auto;
+      overflow: visible;
+    }
+  
+    .shell__corpo {
+      grid-template-columns: 1fr;
+      overflow: visible;
+    }
+  
+    .shell__lista {
+      overflow-y: visible;
+      border-right: 0;
+      border-bottom: var(--border-width) solid var(--color-border);
+    }
+  
+    .shell__painel,
+    .shell__conteudo {
+      overflow: visible;
+    }
+  }
+
+## Limite desta prova
+  Isto verifica a estrategia declarada no CSS. Confirmacao em pixels
+  (zoom 200%, conteudo longo, barra horizontal real) exige navegador e
+  pertence ao smoke do NODE-024 e ao E2E do NODE-040.

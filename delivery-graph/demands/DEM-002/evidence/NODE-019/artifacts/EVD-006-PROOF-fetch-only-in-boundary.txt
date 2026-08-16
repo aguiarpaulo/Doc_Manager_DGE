@@ -1,0 +1,23 @@
+# Prova: a regra anti-fetch com a fronteira de dados real
+Data: 2026-08-15T22:40:49Z
+
+Diferente da prova do NODE-018, aqui src/data/ existe de verdade e
+contem chamadas fetch reais em http.ts.
+
+## A) fetch real dentro da fronteira -> lint LIMPO
+  ocorrencias de fetch em src/data/http.ts:
+    124:    response = await fetch(resolverUrl(path), init);
+    165:    response = await fetch(resolverUrl(path), init);
+  EXIT CODE: 0  (esperado: 0)
+
+## B) mesmo fetch numa feature -> lint REPROVA
+    
+    C:\Projects\dge\Doc_Manager_DGE\frontend\src\features\__proof_violacao.ts
+      2:26  error  Unexpected use of 'fetch'. Use a fronteira de dados em src/data/ — componentes nao falam HTTP diretamente  no-restricted-globals
+    
+    ✖ 1 problem (1 error, 0 warnings)
+    
+  EXIT CODE: 1  (esperado: 1)
+
+## Resultado
+  A fronteira e o unico lugar do projeto onde HTTP e permitido.

@@ -1,0 +1,33 @@
+# Smoke manual contra o stack real (docker compose)
+Data: 2026-08-15T23:52:48Z
+Servicos reais: postgres + minio + api + web(Caddy). TLS interno (curl -k).
+
+## 1. SPA e API na MESMA origem (sem CORS)
+  GET  /                                          HTTP 200  text/html; charset=utf-8
+  GET  /api/health                                HTTP 200  {"status":"ok","checks":{"database":"ok","storage":"ok"}}
+
+## 2. O bundle nao duplica o prefixo de caminho-base
+  bundle servido: /assets/index-Zlnrxuyk.js
+  ocorrencias de '/api/api' no bundle: 0   (esperado 0)
+  ocorrencias de '/api'     no bundle: 1   (base embutida)
+  O Caddy remove /api via handle_path; a API monta os routers na raiz.
+
+## 3. Jornada completa atraves do Caddy
+  POST /api/auth/login                            token recebido
+  GET  /api/auth/me                               {"id":"98df601e-c34a-4a89-bf77-afa455761595","username":"admin","email":"admin@exemplo.com","role":"administrador","is_active":true}
+  POST /api/obras                                 obra c29fa5fa-10e2-417c-9677-1ee934782605
+  POST /api/documents                             documento de25e2be-8d2a-457d-9225-b9ebe05dc6fc
+  POST /api/documents/{id}/versions               {"id":"6d9cb021-8eb9-495a-b897-91fd349e649d","document_id":"de25e2be-8d2a-457d-9225-b9ebe05dc6fc","version":1,"tamanho":41,"tipo":"application/pdf","hash":"014b963d66a24629bdf63bca1768aaf405a6564239669799a0195f531cfe29da"}
+  GET  /api/documents?obra_id=...                 1 documento(s) na obra
+  GET  /api/documents/{id}/versions/1/download    HTTP 200  application/pdf  41 bytes
+  O arquivo foi gravado no MinIO real e devolvido com o tipo registrado.
+
+## 4. Rota filha: acesso direto e F5
+  GET  /administracao                             HTTP 200  text/html; charset=utf-8
+  GET  /obras/c29fa5fa-10e2-417c-9677-1ee934782605 HTTP 200  text/html; charset=utf-8
+  GET  /obras/c29fa5fa-10e2-417c-9677-1ee934782605/documentos/de25e2be-8d2a-457d-9225-b9ebe05dc6fc HTTP 200  text/html; charset=utf-8
+  GET  /rota-inexistente                          HTTP 200  text/html; charset=utf-8
+  Todas devolvem o index; o roteador da SPA resolve o destino.
+
+## Observacao
+  Execucao contra API, PostgreSQL e MinIO reais. Nada simulado.

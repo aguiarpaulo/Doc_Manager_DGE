@@ -1,0 +1,45 @@
+# Remocao do Streamlit: inventario e verificacao
+Data: 2026-08-16T00:07:33Z
+
+## Arquivos e diretorios removidos
+  removido: streamlit_app
+  removido: .streamlit
+  removido: tests/test_streamlit_ui.py
+  removido: scripts/smoke_streamlit_ui.py
+
+## Dependencias
+  extra [project.optional-dependencies].ui no pyproject: 0 (esperado 0)
+  streamlit no pyproject:                                0 (esperado 0)
+  streamlit no uv.lock:                                  0 (esperado 0)
+  requests no pyproject:                                 0 (esperado 0; so o Streamlit usava)
+
+## Documentacao
+  mencoes a streamlit no README.md:  0 (esperado 0)
+  mencoes a streamlit no CLAUDE.md:  1 (esperado 1: nota historica sobre a origem dos tokens)
+  secao Streamlit no .gitignore:     0 (esperado 0)
+
+## Identidade visual preservada
+  O tema vivia em .streamlit/config.toml. Os valores foram migrados para
+  frontend/src/styles/index.css como tokens semanticos antes da remocao:
+    12:  --color-surface-muted: #f1f3f5;
+    13:  --color-border: #d3d8de;
+    14:  --color-text-primary: #1c1f23;
+    21:  --color-action: #15497b;
+    24:  --color-focus: #15497b;
+    29:  --color-danger: #a32020;
+    31:  --color-success: #1e6b3a;
+    32:  --color-warning: #9a5b00;
+    39:  --font-size-base: 0.9375rem;
+    51:  --radius: 0;
+  cores literais fora do arquivo de tokens: 0 (esperado 0)
+
+## Suite apos a remocao
+  pytest: 105 passed
+  ruff check .: All checks passed!
+
+## Regressao encontrada e corrigida
+  test_https_gap_resolution_matches_caddy_implementation quebrou porque o
+  NODE-024 renomeou o servico 'caddy' para 'web' e moveu o Caddy para
+  docker/Dockerfile.web. O teste foi atualizado para conferir onde o Caddy
+  realmente vive, e a resolucao do GAP-002 foi reescrita para descrever a
+  implementacao atual (origem unica com handle_path /api/*).

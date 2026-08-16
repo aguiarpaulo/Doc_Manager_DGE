@@ -1,0 +1,45 @@
+# Prova: tokens semanticos e ausencia de cor literal
+Data: 2026-08-15T22:26:23Z
+
+## Varredura por cor literal fora de src/styles/index.css
+  padrao: #hex | rgb() | rgba() | hsl() | hsla()   em src/**/*.{ts,tsx,css}
+  RESULTADO: nenhuma ocorrencia.
+
+## Blocos de tema em src/styles/index.css
+  5::root {
+  45:@media (prefers-color-scheme: dark) {
+  46:  :root:not([data-theme="light"]) {
+  67::root[data-theme="dark"] {
+
+## Declaracoes de token
+  total: 53
+
+## Amostra de tokens de cor (nome = intencao, nao valor)
+      --color-action
+      --color-action-hover
+      --color-action-text
+      --color-background
+      --color-border
+      --color-danger
+      --color-danger-text
+      --color-focus
+      --color-success
+      --color-surface
+      --color-surface-muted
+      --color-text-primary
+      --color-text-secondary
+      --color-warning
+    --color-action
+    --color-action-hover
+    --color-action-text
+    --color-background
+    --color-border
+    --color-danger
+    --color-danger-text
+    --color-focus
+    --color-success
+    --color-surface
+    --color-surface-muted
+    --color-text-primary
+    --color-text-secondary
+    --color-warning

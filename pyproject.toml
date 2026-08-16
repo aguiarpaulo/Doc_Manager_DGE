@@ -20,19 +20,11 @@ dependencies = [
     "pyotp>=2.9",
 ]
 
-[project.optional-dependencies]
-ui = [
-    "streamlit[pdf]>=1.40",
-    "requests>=2.32",
-]
-
 [dependency-groups]
 dev = [
     "pytest>=8.3",
     "httpx>=0.28",
     "ruff>=0.8",
-    "streamlit[pdf]>=1.40",
-    "requests>=2.32",
 ]
 
 [tool.ruff]

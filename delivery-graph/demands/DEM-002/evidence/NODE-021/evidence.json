@@ -1,0 +1,107 @@
+{
+  "node_id": "NODE-021",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/obras/ObraShell.test.tsx -t ordem de inclusao passed",
+      "satisfies": "Obra com 3 documentos os exibe do mais antigo para o mais novo",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/obras/ObraShell.test.tsx",
+        "-t",
+        "ordem de inclusao"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:02:12.634Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/obras/ObraShell.test.tsx -t sem recarregar a pagina passed",
+      "satisfies": "Selecionar documento na lista o renderiza a direita sem recarregar a pagina",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/obras/ObraShell.test.tsx",
+        "-t",
+        "sem recarregar a pagina"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:02:20.730Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/obras/ObraShell.test.tsx -t restaura a mesma tela passed",
+      "satisfies": "A rota reflete obra e documento de modo que recarregar o navegador restaura a mesma tela",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/obras/ObraShell.test.tsx",
+        "-t",
+        "restaura a mesma tela"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:02:28.309Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/obras/ObraShell.test.tsx -t estado vazio proprio passed",
+      "satisfies": "Obra sem documentos mostra estado vazio proprio e nao mensagem de erro",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/obras/ObraShell.test.tsx",
+        "-t",
+        "estado vazio proprio"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:02:35.590Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos/VisualizadorConteudo.test.tsx passed",
+      "satisfies": "A renderizacao despacha pelo Content-Type devolvido pelo download e nunca pela extensao do arquivo",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos/VisualizadorConteudo.test.tsx"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:02:42.733Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "manual",
+      "summary": "shell.css fixa .shell em 100vh com overflow hidden (a pagina nao rola) e declara exatamente duas regioes rolaveis: .shell__lista (overflow-y auto) e .shell__conteudo (overflow auto). min-width/min-height 0 nos filhos flexiveis; zero ocorrencias de overflow-x e nenhuma largura fixa em px alem da espessura de borda. Confirmacao em pixels fica para o smoke do NODE-024.",
+      "satisfies": "Regiao de rolagem unica definida; a pagina nao rola horizontalmente",
+      "result": "pass",
+      "artifact": "artifacts/EVD-006-PROOF-regiao-de-rolagem.txt",
+      "created_at": "2026-08-15T23:02:43.359Z"
+    }
+  ]
+}

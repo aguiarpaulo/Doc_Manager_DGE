@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/eslint/bin/eslint.js",
+    "frontend/src",
+    "frontend/eslint.config.js"
+  ],
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "created_at": "2026-08-15T22:24:11.770Z",
+  "artifacts": []
+}

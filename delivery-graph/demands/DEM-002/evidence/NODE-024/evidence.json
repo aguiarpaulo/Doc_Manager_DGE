@@ -1,0 +1,50 @@
+{
+  "node_id": "NODE-024",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "manual",
+      "summary": "Stack real de pe: postgres+minio+api+web. GET / devolve a SPA (text/html) e GET /api/health devolve {database:ok, storage:ok} na MESMA origem https://localhost. Nenhuma requisicao atravessa origem, logo nao ha CORS.",
+      "satisfies": "docker compose up serve SPA e API na mesma origem sem necessidade de CORS",
+      "result": "pass",
+      "artifact": "artifacts/EVD-001-PROOF-smoke-stack-real.txt",
+      "created_at": "2026-08-15T23:53:11.712Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "manual",
+      "summary": "C:/Program Files/Git/administracao, /obras/{id} e /obras/{id}/documentos/{id} devolvem HTTP 200 text/html por acesso direto, via try_files {path} /index.html no Caddy. Sem o fallback, um F5 em rota filha daria 404 do servidor de arquivos.",
+      "satisfies": "Acesso direto a uma rota filha funciona e atualizar o navegador nela tambem",
+      "result": "pass",
+      "artifact": "artifacts/EVD-002-PROOF-smoke-stack-real.txt",
+      "created_at": "2026-08-15T23:53:12.438Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "manual",
+      "summary": "O bundle servido tem 0 ocorrencias de '/api/api' e 1 da base '/api'. O Caddy usa handle_path /api/* que remove o prefixo antes do reverse_proxy, e a API monta os routers na raiz; a jornada completa respondeu 200/201 em todos os endpoints.",
+      "satisfies": "Chamada de API nao duplica o prefixo do caminho-base",
+      "result": "pass",
+      "artifact": "artifacts/EVD-003-PROOF-smoke-stack-real.txt",
+      "created_at": "2026-08-15T23:53:13.416Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "manual",
+      "summary": "Erro de tipo proposital em frontend/src derrubou 'docker compose build web' no estagio Node: tsc TS2322, exit code 2, 'failed to solve'. Nenhuma imagem foi exportada.",
+      "satisfies": "Build falha e nao publica quando a checagem de tipos falha",
+      "result": "pass",
+      "artifact": "artifacts/EVD-004-PROOF-build-falha-com-erro-de-tipo.txt",
+      "created_at": "2026-08-15T23:53:14.187Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "manual",
+      "summary": "Jornada atraves do Caddy com servicos reais: login -> /auth/me -> criar obra -> criar documento (obra_id UUID) -> upload de PDF ao MinIO (hash SHA-256 devolvido) -> listagem da obra (1 documento) -> download HTTP 200 application/pdf 41 bytes. Nada simulado.",
+      "satisfies": "Smoke manual contra o stack real percorre login e listagem de documentos (nao vale execucao com a API simulada)",
+      "result": "pass",
+      "artifact": "artifacts/EVD-005-PROOF-smoke-stack-real.txt",
+      "created_at": "2026-08-15T23:53:14.775Z"
+    }
+  ]
+}

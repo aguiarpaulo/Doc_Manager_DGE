@@ -1,0 +1,18 @@
+# Prova: a imagem nao e publicada quando ha erro de tipo
+Data: 2026-08-15T23:47:54Z
+
+Arquivo temporario em frontend/src/__proof_type_error.ts:
+  export const total: number = "isto nao e um numero";
+
+## docker compose build web
+  #12 [web build 6/6] RUN npm run build
+  #12 13.26 src/__proof_type_error.ts(1,14): error TS2322: Type 'string' is not assignable to type 'number'.
+  #12 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+   > [web build 6/6] RUN npm run build:
+  13.26 src/__proof_type_error.ts(1,14): error TS2322: Type 'string' is not assignable to type 'number'.
+  failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 2
+  EXIT CODE: 1
+
+## Leitura
+  npm run build e 'tsc --noEmit && vite build': o tsc derruba o estagio
+  de build e nenhuma imagem chega a ser exportada.
