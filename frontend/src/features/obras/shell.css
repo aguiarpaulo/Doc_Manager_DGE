@@ -1,0 +1,177 @@
+/* Shell no modelo do SEI: a obra faz o papel do processo, seus documentos ficam
+   listados a esquerda em ordem de inclusao e o selecionado e renderizado ao
+   lado. Somente tokens aqui — nenhuma cor literal. */
+
+.shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  /* Ancora a altura para que a rolagem aconteca dentro do painel e nao na
+     pagina inteira: uma unica regiao rolavel, sem scrolls concorrentes. */
+  height: 100vh;
+  overflow: hidden;
+}
+
+.shell__cabecalho {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.shell__marca {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.shell__identidade {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.shell__corpo {
+  display: grid;
+  grid-template-columns: minmax(14rem, 22rem) 1fr;
+  min-height: 0; /* deixa os filhos encolherem em vez de estourar a grade */
+  overflow: hidden;
+}
+
+.shell__lista {
+  overflow-y: auto;
+  min-width: 0;
+  border-right: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.shell__painel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shell__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.shell__conteudo {
+  /* A unica regiao que rola verticalmente junto com a lista. */
+  overflow: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-3);
+  background: var(--color-background);
+}
+
+.lista-documentos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.lista-documentos__item {
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+
+.lista-documentos__link {
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.lista-documentos__link:hover {
+  background: var(--color-surface);
+}
+
+/* Selecao nao depende so de cor: a barra lateral e o peso da fonte carregam o
+   estado junto com o fundo. */
+.lista-documentos__link[aria-current="true"] {
+  background: var(--color-surface);
+  border-left: 3px solid var(--color-action);
+  font-weight: 600;
+}
+
+.lista-documentos__ordem {
+  color: var(--color-text-secondary);
+  margin-right: var(--space-2);
+}
+
+.lista-documentos__meta {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.visualizador__quadro {
+  width: 100%;
+  height: 100%;
+  min-height: 30rem;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.visualizador__imagem {
+  max-width: 100%;
+  height: auto;
+}
+
+.visualizador__texto {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  font-family: var(--font-mono);
+}
+
+.visualizador__sem-previa {
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.estado-vazio {
+  padding: var(--space-4);
+  color: var(--color-text-secondary);
+}
+
+/* Telas estreitas: as duas colunas viram uma so, e a pagina passa a rolar
+   normalmente em vez de manter dois painies apertados. */
+@media (max-width: 48rem) {
+  .shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .shell__corpo {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .shell__lista {
+    overflow-y: visible;
+    border-right: 0;
+    border-bottom: var(--border-width) solid var(--color-border);
+  }
+
+  .shell__painel,
+  .shell__conteudo {
+    overflow: visible;
+  }
+}

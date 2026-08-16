@@ -1,0 +1,16 @@
+# Prova: a aplicacao carrega sob caminho-base configurado
+Data: 2026-08-15T22:26:08Z
+
+Build com VITE_BASE_PATH=/ged/ e servido por vite preview na porta 4175.
+Tamanho real do JS em dist: 190674 bytes (index.html tem ~400 bytes).
+
+## Requisicoes
+  /                                          HTTP 302  bytes=0
+  /ged/                                      HTTP 200  bytes=403
+  /ged/assets/index-ByCFxAbC.js              HTTP 200  bytes=190674  text/javascript
+  /ged/assets/index-DtSyxa7E.css             HTTP 200  bytes=1925  text/css
+
+## Leitura
+  A raiz redireciona (302): a app nao esta em /.
+  O asset sob /ged/ devolve 190674 bytes com MIME text/javascript,
+  ou seja o arquivo real e nao o fallback de index.html.

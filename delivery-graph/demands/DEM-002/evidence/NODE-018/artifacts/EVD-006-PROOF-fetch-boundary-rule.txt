@@ -1,0 +1,19 @@
+# Prova: a regra de lint bloqueia fetch fora da fronteira de dados
+Data: 2026-08-15T22:25:29Z
+
+Dois arquivos identicos, so muda o diretorio.
+
+## A) src/__proof_fetch_component.ts  -> DEVE REPROVAR
+  
+  C:\Projects\dge\Doc_Manager_DGE\frontend\src\__proof_fetch_component.ts
+    2:26  error  Unexpected use of 'fetch'. Use a fronteira de dados em src/data/ — componentes nao falam HTTP diretamente  no-restricted-globals
+  
+  ✖ 1 problem (1 error, 0 warnings)
+  
+  EXIT CODE: 1  (esperado: 1)
+
+## B) src/data/__proof_fetch_boundary.ts  -> DEVE PASSAR
+  EXIT CODE: 0  (esperado: 0)
+
+## Resultado
+  A regra distingue o local da chamada, nao o texto dela.

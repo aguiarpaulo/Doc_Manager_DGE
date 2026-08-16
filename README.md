@@ -4,7 +4,7 @@ Sistema para gerenciar documentos de obras: usuários com papéis, obras, upload
 arquivos, versionamento, fluxo de aprovação, MFA e auditoria.
 
 - **API (backend):** FastAPI — código em `app/`
-- **UI (frontend):** Streamlit — código em `streamlit_app/`
+- **UI (frontend):** SPA React + TypeScript (Vite) — código em `frontend/`
 - **Banco de dados:** PostgreSQL (SQLite em memória apenas nos testes)
 - **Armazenamento de arquivos:** MinIO (compatível com S3)
 - **HTTPS:** Caddy (certificado automático)
@@ -47,7 +47,7 @@ uv run pytest -k login              # só testes cujo nome contém "login"
 Cada arquivo em `tests/` cobre uma área: `test_auth`, `test_users`, `test_obras`,
 `test_documents`, `test_uploads`, `test_versioning`, `test_approval`, `test_mfa`,
 `test_password_reset`, `test_search`, `test_soft_delete`, `test_audit`,
-`test_observability`, `test_streamlit_ui`, `test_scaffold`, `test_bootstrap_admin`,
+`test_observability`, `test_scaffold`, `test_bootstrap_admin`,
 `test_container_build`, `test_operational_scripts`.
 
 Os três últimos protegem o caminho do Docker, que o resto da suíte não exercita: eles
@@ -136,31 +136,47 @@ uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
-### Rodar a interface Streamlit
+### Rodar a interface (SPA)
 
-Com a API já no ar (`http://localhost:8000`):
+Com a API no ar (`http://localhost:8000`):
 
 ```powershell
-uv run streamlit run streamlit_app/app.py
+cd frontend
+npm install
+npm run dev
 ```
 
-A UI usa a variável `GED_API_URL` para achar a API (padrão: `http://localhost:8000`).
+O Vite sobe em `http://localhost:5173`. A SPA acha a API por `VITE_API_BASE_URL`
+(padrão `/api`); em desenvolvimento aponte-a para a API direta:
+
+```powershell
+$env:VITE_API_BASE_URL = "http://localhost:8000"; npm run dev
+```
+
+Comandos do frontend:
+
+```powershell
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm test            # vitest (não precisa de serviço nenhum)
+npm run build       # tsc --noEmit && vite build; falha se houver erro de tipo
+```
+
+Os testes de integração (`*.integration.test.ts`) ficam desativados por padrão e
+só rodam com `GED_LIVE_API=1` apontando para uma API de pé. São eles que
+exercitam os tipos que o backend valida de verdade.
 
 #### Organização da tela
 
-A interface tem duas abas:
+A tela reproduz o layout do [SEI](https://softwarepublico.gov.br/social/sei/manuais/manual-do-usuario/3.-operacoes-basicas-com-processos),
+onde a **obra faz o papel do processo**: escolhida a obra, os documentos aparecem
+em coluna à esquerda em ordem de inclusão (mais antigo no topo), numerados. Clicar
+em um documento o destaca e abre o conteúdo à direita, na própria página. A
+renderização despacha pelo `Content-Type` que o download devolve, nunca pela
+extensão: PDF e imagens têm prévia, os demais tipos caem no botão de download.
 
-- **Enviar documento** — o formulário de criação e upload.
-- **Documentos** — consulta no layout do [SEI](https://softwarepublico.gov.br/social/sei/manuais/manual-do-usuario/3.-operacoes-basicas-com-processos),
-  onde a **obra faz o papel do processo**: escolhida a obra, os documentos aparecem
-  em coluna à esquerda "organizados por ordem de inclusão, na vertical" (mais antigo
-  no topo, mais recente no fim), numerados. Clicar em um documento o destaca e abre o
-  conteúdo à direita, embutido na própria página — PDF no visualizador nativo do
-  Streamlit, imagens em `st.image`, e botão de download sempre disponível.
-
-O visualizador de PDF exige o extra `streamlit[pdf]` (pacote `streamlit-pdf`), já
-declarado nas dependências. Se ele faltar no ambiente, a página não quebra: o
-documento continua baixável e a UI avisa qual extra instalar.
+A obra e o documento abertos vivem na URL, então a tela é compartilhável e o F5
+restaura exatamente o que estava aberto.
 
 #### Pré-requisito: obras cadastradas
 
@@ -175,17 +191,23 @@ Cadastro das obras iniciais, autenticado com as credenciais de `GED_BOOTSTRAP_AD
 
 ```powershell
 uv run python - <<'PY'
-import requests
-from streamlit_app import api_client
+import json, urllib.request
 
-token = api_client.login("admin@exemplo.com.br", "SUA_SENHA")["access_token"]
+BASE = "http://localhost:8000"
+
+def chamar(caminho, corpo, token=None):
+    cabecalhos = {"Content-Type": "application/json"}
+    if token:
+        cabecalhos["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(
+        f"{BASE}{caminho}", data=json.dumps(corpo).encode(), headers=cabecalhos
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+token = chamar("/auth/login", {"username": "admin", "password": "SUA_SENHA"})["access_token"]
 for i in range(1, 6):
-    requests.post(
-        "http://localhost:8000/obras",
-        headers={"Authorization": f"Bearer {token}"},
-        json={"nome": f"Obra {i:02d}", "descricao": ""},
-        timeout=30,
-    ).raise_for_status()
+    chamar("/obras", {"nome": f"Obra {i:02d}", "descricao": ""}, token)
 PY
 ```
 
@@ -234,10 +256,16 @@ a autorização de `POST /obras`, `POST /users` e das rotas de vínculo.
 #### Erros da API na interface
 
 Falhas de `GET /documents`, `GET /obras` e do envio de documentos aparecem como
-`st.error` com a mensagem que a API devolveu, em vez de estourar traceback na tela.
-`streamlit_app.api_client.error_message` normaliza os dois formatos de `detail` que o
-FastAPI produz: texto (erros de negócio, ex.: 409 de hash duplicado na mesma obra) e
-lista de erros por campo (validação, 422).
+alerta com a mensagem que a API devolveu, em vez de estourar erro na tela.
+`frontend/src/data/errors.ts` normaliza os dois formatos de `detail` que o FastAPI
+produz: texto (erros de negócio, ex.: 409 de hash duplicado na mesma obra) e lista
+de erros por campo (validação, 422) — neste caso os campos ficam disponíveis à parte,
+para o formulário destacar qual deles falhou.
+
+A UI nunca inspeciona o status HTTP: ela decide pela `category` do
+`ApplicationError` (`autenticacao`, `autorizacao`, `validacao`, `conflito`,
+`nao-encontrado`, `indisponivel`, `rede`, `cancelado`). O conhecimento de protocolo
+não sai da fronteira de dados.
 
 ---
 
@@ -248,25 +276,24 @@ Checagens manuais de que a infra está viva (rode com os serviços no ar):
 ```powershell
 uv run python scripts/smoke_health.py              # a API responde? (/health)
 uv run python scripts/smoke_minio_persistence.py   # o armazenamento funciona?
-uv run python scripts/smoke_streamlit_ui.py        # a UI faz login, lista obras e sobe arquivo?
 ```
 
 O endpoint `/health` também retorna o status do banco e do armazenamento em JSON.
 
-`smoke_streamlit_ui.py` executa `streamlit_app/app.py` no harness `AppTest` do
-Streamlit **sem nenhum mock**, então cada chamada vai para a API, o PostgreSQL e o
-MinIO reais. É o smoke exigido pelo contrato de validação do NODE-015: a suíte de
-`pytest` sozinha não serve, porque ela mocka o `api_client` e portanto nunca exercita
-os tipos que a API valida de verdade. Configure com `GED_SMOKE_EMAIL`,
-`GED_SMOKE_PASSWORD` e `GED_SMOKE_FILE` (caminho de um PDF para anexar); cada execução
-acrescenta bytes únicos ao arquivo, porque a API rejeita com 409 um upload cujo hash já
-exista na mesma obra.
+A jornada da interface é verificada de duas formas, ambas **sem mock**:
 
-O smoke cobre login, envio, a árvore de documentos da obra e a abertura do documento
-no visualizador. O que ele **não** cobre é o desenho do PDF na tela: `st.pdf` é um
-componente de frontend e o `AppTest` roda sem o runtime que registra componentes, então
-nesse caminho a UI cai no aviso de visualizador indisponível. A renderização visual só
-se confirma abrindo a aplicação no navegador.
+- `frontend/src/data/*.integration.test.ts` — roda a fronteira de dados real
+  contra a API de pé (`GED_LIVE_API=1`). Cobre login, ciclo de vida de documento
+  com MinIO real e as regras administrativas.
+- O smoke de `docker compose` documentado em
+  `delivery-graph/demands/DEM-002/evidence/NODE-024/` — percorre login, criação de
+  obra e documento, upload, listagem e download através do Caddy, com PostgreSQL e
+  MinIO reais.
+
+Essa separação existe por causa da lição registrada no NODE-015: a suíte de
+componentes simula a fronteira HTTP e por isso **não serve como evidência de
+smoke** — foi assim que um campo de texto onde a API valida `uuid.UUID` chegou a
+fazer todo upload retornar 422.
 
 ---
 
@@ -368,9 +395,9 @@ os demais aparecem com botão de download.
 
 ```
 app/            # API FastAPI (rotas, modelos, schemas, serviços, storage)
-streamlit_app/  # Interface Streamlit
+frontend/       # SPA React + TypeScript (Vite)
 tests/          # Testes automáticos (pytest)
 alembic/        # Migrações de banco
 scripts/        # Backup, restore e smoke tests
-docker/         # Configuração do Caddy (HTTPS)
+docker/         # Caddy (HTTPS + origem única) e build da imagem web
 ```

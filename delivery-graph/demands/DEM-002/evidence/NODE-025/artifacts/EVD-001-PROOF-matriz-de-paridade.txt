@@ -1,0 +1,61 @@
+# Auditoria de paridade: streamlit_app/ -> SPA
+Data: 2026-08-15
+Metodo: enumerar TODA a superficie que a UI Streamlit usa (funcoes de
+api_client.py, que sao os endpoints que ela de fato chama) e conferir uma a uma
+contra a SPA. A conferencia e contra o que existe, nao contra a lista de
+validacao do no -- licao registrada no NODE-023.
+
+| # | Streamlit (api_client)  | Onde e usado na UI      | SPA                              | OK |
+|---|-------------------------|-------------------------|----------------------------------|----|
+| 1 | login (com MFA)         | render_login            | LoginPage + campo de codigo      | s  |
+| 2 | me                      | render_dashboard        | AuthContext (papel via /auth/me) | s  |
+| 3 | list_obras              | seletor de obra         | ObraShell + EscolherObra         | s  |
+| 4 | create_obra             | render_admin_tab        | AdminPage > BlocoObras           | s  |
+| 5 | archive_obra            | render_admin_tab        | AdminPage > BlocoObras           | s  |
+| 6 | list_archived_obras     | render_admin_tab        | AdminPage > BlocoRestaurar       | s  |
+| 7 | restore_obra            | render_admin_tab        | AdminPage > BlocoRestaurar       | s  |
+| 8 | list_users              | render_admin_tab        | AdminPage > BlocoUsuarios        | s  |
+| 9 | create_user             | render_admin_tab        | AdminPage > BlocoUsuarios        | s  |
+|10 | update_user (papel)     | render_admin_tab        | select de papel por linha        | s  |
+|11 | update_user (ativo)     | render_admin_tab        | botao ativar/desativar           | s  |
+|12 | grant_obra_access       | render_admin_tab        | AdminPage > BlocoAcessos         | s  |
+|13 | revoke_obra_access      | render_admin_tab        | AdminPage > BlocoAcessos         | s  |
+|14 | search_documents        | render_documents_tab    | ObraShell (lista por obra)       | s  |
+|15 | create_document         | render_upload_tab       | FormularioUpload                 | s  |
+|16 | upload_version          | render_upload_tab       | FormularioUpload + AcoesDocumento| s  |
+|17 | download_version        | render_viewer           | VisualizadorConteudo + Baixar    | s  |
+|18 | transition (analise)    | render_documents_tab    | AcoesDocumento                   | s  |
+|19 | transition (aprovar)    | render_documents_tab    | AcoesDocumento                   | s  |
+|20 | transition (rejeitar)   | render_documents_tab    | AcoesDocumento                   | s  |
+|21 | history                 | NAO RENDERIZADO         | (fronteira tem; tela e NODE-037) | -  |
+
+Detalhes de comportamento conferidos alem dos endpoints:
+
+ a) Despacho de renderizacao pelo Content-Type e nao pela extensao
+    Streamlit: render_content  |  SPA: classificar() em VisualizadorConteudo
+    -> paridade, com teste dedicado dos dois lados.
+
+ b) Confirmacao de senha ao criar usuario (commit 4aee7d9)
+    Streamlit: campo "Confirmar senha" com validacao senha != senha2
+    SPA: FALTAVA. Adicionado neste no, com dois testes.
+
+ c) Regra de nome de usuario exibida como ajuda
+    Streamlit: st.caption(REGRA_USUARIO)
+    SPA: FALTAVA. Adicionado como aria-describedby do campo.
+
+ d) Area administrativa apenas para administrador, papel vindo de /auth/me
+    -> paridade, com teste.
+
+ e) Administracao acessivel com zero obras; restaurar obra unica arquivada
+    -> paridade, com testes.
+
+ f) Esqueci minha senha
+    Streamlit: NAO TEM.  SPA: TEM (ForgotPasswordPage).
+    -> a SPA e superconjunto neste ponto.
+
+CONCLUSAO
+Item 21 (history) nao e lacuna: a funcao existe no cliente Streamlit mas nao e
+chamada por nenhuma tela -- `grep -n history streamlit_app/app.py` nao retorna
+nada. Os itens (b) e (c) eram lacunas reais e foram fechados ANTES da remocao.
+Com isso a SPA cobre 100% do que a UI Streamlit oferece ao usuario, e ainda
+acrescenta recuperacao de senha.

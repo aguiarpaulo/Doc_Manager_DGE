@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+bundle-report.html
+*.local
+.vite/

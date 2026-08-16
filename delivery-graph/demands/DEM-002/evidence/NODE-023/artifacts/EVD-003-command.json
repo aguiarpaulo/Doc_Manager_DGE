@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "src/features/admin/AdminPage.test.tsx",
+    "-t",
+    "unica do sistema"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed (1)\n      Tests  1 passed | 7 skipped (8)\n   Start at  20:36:48\n   Duration  5.24s (transform 346ms, setup 762ms, import 584ms, tests 562ms, environment 2.85s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-15T23:36:54.176Z",
+  "artifacts": []
+}

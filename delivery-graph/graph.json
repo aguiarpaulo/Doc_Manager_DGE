@@ -5,8 +5,8 @@
     "status": "draft",
     "source": "local",
     "created_at": "2026-07-03T17:52:13.967Z",
-    "updated_at": "2026-07-03T20:07:01.280Z",
-    "rev": 77
+    "updated_at": "2026-08-16T00:10:32.459Z",
+    "rev": 162
   },
   "demands": [
     {
@@ -32,6 +32,34 @@
         "Alta disponibilidade / clustering multi-nó — deploy é Docker Compose num host."
       ],
       "problem": "Uma construtora precisa centralizar documentos (contratos, projetos, notas fiscais, licenças, laudos) espalhados por obra, com controle de quem acessa o quê, um fluxo formal de aprovação e trilha de auditoria. Hoje isso é feito de forma dispersa (arquivos soltos/e-mail) sem versionamento, controle de acesso por obra nem histórico confiável. Repositório greenfield: não há código a reutilizar (survey confirmou apenas README e .gitignore)."
+    },
+    {
+      "id": "DEM-002",
+      "title": "Front end SPA com fluxo de assinatura de documentos por obra",
+      "source": "Solicitacao direta do Paulo via /dge-intake em 2026-08-06",
+      "requester": "Paulo",
+      "problem": "O GED DGE tem hoje uma UI Streamlit fina (streamlit_app/, 427 linhas) que cobre login, obras, documentos, aprovacao e administracao, mas nao satisfaz a arquitetura da base de conhecimento em docs/base-conhecimento-arquitetura-frontend-web.md (tipagem estrita, pastas por funcionalidade, modais com gestao de foco, Testing Library + E2E) e nao consegue renderizar um PDF com selecao de area. Alem disso nao existe nenhum conceito de assinatura no sistema: grep por 'assinat|signature|sign_' retorna zero ocorrencias fora de .venv. Quem precisa comprovar quem anuiu a que e quando depende so do fluxo de aprovacao (enviado -> em_analise -> aprovado/rejeitado), que registra decisao de um aprovador mas nao a anuencia nominal de terceiros sobre um trecho especifico do documento.",
+      "outcome": "Uma SPA React+TypeScript construida conforme a base de conhecimento, que substitui integralmente o Streamlit e acrescenta um fluxo de assinatura: a rubrica e registrada no primeiro acesso, o solicitante marca em um PDF a area onde outro usuario deve assinar, o signatario e notificado por e-mail, assina confirmando com a propria senha, e cada etapa do documento fica registrada na linha do tempo da pasta da obra com nome e horario.",
+      "constraints": [
+        "Backend reaproveitado e nao reescrito: auth JWT + /auth/me + app/scope.py + Document/DocumentVersion/MinIO e a maquina de estados de aprovacao permanecem a autoridade",
+        "A assinatura nunca altera os bytes do arquivo armazenado nem seu SHA-256; o PDF carimbado e artefato derivado gerado sob demanda no download",
+        "Assinar exige confirmacao com a senha do proprio signatario; sessao aberta nao basta",
+        "POST /users continua admin-only; nao havera auto-cadastro publico",
+        "Arquitetura da SPA governada por docs/base-conhecimento-arquitetura-frontend-web.md: TS estrito + fronteira HTTP unica e tipada + estado com proprietario definido + tokens CSS semanticos + WCAG AA + operacao por teclado",
+        "SPA servida na mesma origem da API pelo Caddy para evitar CORS (base de conhecimento secao 10.2)",
+        "Interface em portugues como o restante do sistema",
+        "Nao existe CI no repositorio; pytest + ruff + checagem de tipos + testes de front rodam manualmente antes do commit"
+      ],
+      "non_goals": [
+        "Assinatura qualificada ICP-Brasil / PAdES / certificado A1-A3 e verificacao por terceiros",
+        "Assinatura posicionada em Word / Excel / txt / imagens; somente PDF",
+        "Motor de workflow configuravel por tipo de documento com etapas de ordem obrigatoria",
+        "Tramitacao entre unidades ou setores no modelo de processo do SEI; o sistema nao tem conceito de unidade",
+        "Replica da identidade visual do SEI (cores / tipografia / icones); apenas a estrutura de tela e espelhada",
+        "Prazo de expiracao para solicitacao de assinatura",
+        "Link magico que autentique o signatario sem login",
+        "Ordem obrigatoria entre multiplos signatarios; assinaturas sao paralelas"
+      ]
     }
   ],
   "requirements": [
@@ -340,6 +368,280 @@
           "Verificacao manual (smoke) dos fluxos principais na UI Streamlit contra a API"
         ]
       }
+    },
+    {
+      "id": "REQ-018",
+      "demand_id": "DEM-002",
+      "statement": "A SPA apresenta a obra no papel de processo: lista de documentos a esquerda em ordem de inclusao crescente + documento selecionado renderizado a direita + barra de acoes no topo + cabecalho identificando usuario e obra",
+      "priority": "must",
+      "acceptance": [
+        "Uma obra com 3 documentos os exibe na ordem de inclusao do mais antigo para o mais novo",
+        "Selecionar um documento na lista o renderiza no painel direito sem recarregar a pagina",
+        "A rota reflete obra e documento selecionados de modo que recarregar o navegador restaura a mesma tela",
+        "Uma obra sem documentos mostra estado vazio proprio e nao uma mensagem de erro"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente com a fronteira HTTP simulada cobrindo ordem / selecao / rota / estado vazio"
+        ]
+      }
+    },
+    {
+      "id": "REQ-019",
+      "demand_id": "DEM-002",
+      "statement": "No primeiro acesso o usuario deve desenhar sua rubrica em canvas antes de abrir qualquer outra tela; a rubrica e armazenada como PNG vinculado ao usuario",
+      "priority": "must",
+      "acceptance": [
+        "Usuario sem rubrica e redirecionado a tela de registro em qualquer rota protegida que tente abrir",
+        "Canvas vazio nao permite salvar e informa o motivo",
+        "Apos salvar a rubrica o usuario segue para o destino que tentava acessar",
+        "Usuario que ja possui rubrica nunca ve essa tela",
+        "Nenhum endpoint permite a um administrador gravar a rubrica de outro usuario"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente do fluxo de registro + teste de API rejeitando gravacao de rubrica por terceiro"
+        ]
+      }
+    },
+    {
+      "id": "REQ-020",
+      "demand_id": "DEM-002",
+      "statement": "O autor do documento ou um administrador/diretor abre um PDF na SPA e desenha um retangulo indicando onde um usuario especifico deve assinar; a solicitacao guarda pagina + coordenadas normalizadas + versao do documento + signatario",
+      "priority": "must",
+      "acceptance": [
+        "Desenhar um retangulo na pagina 2 e escolher um signatario cria solicitacao pendente vinculada a versao atual",
+        "As coordenadas sao normalizadas ao tamanho da pagina de modo que o quadrado cai no mesmo ponto em qualquer zoom",
+        "Nao e possivel solicitar assinatura de usuario sem acesso a obra do documento",
+        "Documento que nao e PDF nao oferece a acao de solicitar assinatura",
+        "Um mesmo documento aceita varias solicitacoes para signatarios diferentes sem ordem obrigatoria entre elas"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente da marcacao de area + teste de API cobrindo escopo de obra e tipo nao-PDF"
+        ]
+      }
+    },
+    {
+      "id": "REQ-021",
+      "demand_id": "DEM-002",
+      "statement": "Ao criar a solicitacao o sistema envia e-mail ao signatario com link direto para a tela de assinatura; sem sessao ativa o link leva ao login e retorna ao destino apos autenticar",
+      "priority": "must",
+      "acceptance": [
+        "Criar uma solicitacao envia exatamente um e-mail ao endereco do signatario",
+        "O corpo do e-mail traz nome do documento + obra + quem solicitou + o link",
+        "Abrir o link sem sessao leva ao login e apos autenticar abre a tela de assinatura do documento correto",
+        "Falha no envio do e-mail nao impede a criacao da solicitacao e fica registrada em log"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API com InMemoryEmailSender + E2E Playwright com SMTP de teste provando e-mail recebido e link funcional"
+        ]
+      }
+    },
+    {
+      "id": "REQ-022",
+      "demand_id": "DEM-002",
+      "statement": "O signatario assina confirmando a propria senha; a assinatura grava signatario + data-hora + versao assinada e a rubrica passa a aparecer na area marcada",
+      "priority": "must",
+      "acceptance": [
+        "Senha correta conclui a assinatura e a rubrica aparece na area marcada com nome e horario",
+        "Senha incorreta recusa a assinatura e a solicitacao continua pendente",
+        "Somente o signatario indicado consegue assinar aquela solicitacao",
+        "Uma solicitacao ja assinada nao pode ser assinada novamente",
+        "O botao de confirmar fica desabilitado durante o envio impedindo assinatura duplicada"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API do ato de assinar + teste de componente do modal de confirmacao por senha"
+        ]
+      }
+    },
+    {
+      "id": "REQ-023",
+      "demand_id": "DEM-002",
+      "statement": "Cada documento exibe na pasta da obra a linha do tempo de suas etapas com autor e horario: upload + nova versao + envio para analise + aprovacao + rejeicao + solicitacao de assinatura + assinatura + recusa + cancelamento",
+      "priority": "must",
+      "acceptance": [
+        "Cada uma dessas acoes gera exatamente um registro imutavel com autor e horario",
+        "A linha do tempo aparece na tela do documento em ordem cronologica",
+        "Assinaturas aparecem na linha do tempo com o nome do signatario e o horario da assinatura",
+        "Nenhum endpoint permite editar ou apagar um registro da linha do tempo"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API sobre GET /documents/{id}/history estendido + teste de componente da linha do tempo"
+        ]
+      }
+    },
+    {
+      "id": "REQ-024",
+      "demand_id": "DEM-002",
+      "statement": "O envio de nova versao cancela automaticamente as solicitacoes pendentes daquela versao + registra o cancelamento na linha do tempo + notifica os signatarios; assinaturas ja concluidas permanecem validas para a versao em que foram feitas",
+      "priority": "must",
+      "acceptance": [
+        "Enviar nova versao com 2 pendencias abertas deixa as 2 canceladas",
+        "O cancelamento automatico gera registro na linha do tempo com o motivo",
+        "Assinaturas concluidas na versao anterior continuam consultaveis e vinculadas aquela versao",
+        "Depois do cancelamento nenhum signatario consegue assinar a solicitacao antiga"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API que envia nova versao com pendencias abertas e verifica cancelamento + preservacao das assinaturas anteriores"
+        ]
+      }
+    },
+    {
+      "id": "REQ-025",
+      "demand_id": "DEM-002",
+      "statement": "O download de um PDF assinado entrega copia carimbada com as rubricas nas areas marcadas + pagina final de conferencia listando signatario / horario / versao; o objeto original no MinIO e seu SHA-256 permanecem inalterados",
+      "priority": "must",
+      "acceptance": [
+        "Baixar documento assinado retorna PDF contendo a rubrica na pagina e coordenadas registradas",
+        "O PDF baixado traz pagina final de conferencia com nome e horario de cada signatario",
+        "O hash do objeto original no armazenamento e identico antes e depois da assinatura",
+        "Documento sem assinatura baixa o arquivo original sem qualquer alteracao",
+        "Gerar o carimbo nao cria nova versao do documento nem altera seu status de aprovacao"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API comparando hash do objeto antes/depois + inspecao do PDF gerado confirmando rubrica e pagina de conferencia"
+        ]
+      }
+    },
+    {
+      "id": "REQ-026",
+      "demand_id": "DEM-002",
+      "statement": "A SPA cobre todas as funcoes hoje disponiveis no Streamlit: login + esqueci minha senha + listagem e selecao de obras + upload e nova versao + download + aprovacao e rejeicao + administracao de usuarios e obras incluindo arquivar e restaurar",
+      "priority": "must",
+      "acceptance": [
+        "Cada funcao listada tem tela correspondente na SPA e teste de comportamento",
+        "A area de administracao aparece somente para papel administrador conforme GET /auth/me",
+        "A administracao continua acessivel com zero obras cadastradas",
+        "Restaurar obra arquivada funciona mesmo quando ela era a unica obra do sistema"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Matriz de paridade funcao a funcao + testes de componente de cada tela"
+        ]
+      }
+    },
+    {
+      "id": "REQ-027",
+      "demand_id": "DEM-002",
+      "statement": "A SPA implementa a arquitetura da base de conhecimento: TypeScript estrito + organizacao por funcionalidade + fronteira HTTP unica e tipada com validacao de resposta + estados explicitos de carga/revalidacao/vazio/erro/sucesso + tokens CSS semanticos + caminho-base configuravel",
+      "priority": "must",
+      "acceptance": [
+        "A checagem de tipos passa sem erro e o build falha quando ha erro de tipo",
+        "Nenhum componente chama fetch diretamente; todo acesso remoto passa pela fronteira de dados",
+        "Cada tela de dados distingue visualmente primeira carga / atualizacao em segundo plano / vazio / erro",
+        "Nenhuma cor literal aparece fora dos tokens",
+        "A aplicacao carrega e navega corretamente quando servida sob um subcaminho"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Saida da checagem de tipos + regra de lint proibindo fetch fora da fronteira + teste de navegacao sob subcaminho"
+        ]
+      }
+    },
+    {
+      "id": "REQ-028",
+      "demand_id": "DEM-002",
+      "statement": "A entrega inclui testes de componente por comportamento para cada tela e um E2E Playwright da jornada completa de assinatura contra o stack real com API + Postgres + MinIO + SMTP de teste",
+      "priority": "must",
+      "acceptance": [
+        "Cada pagina tem teste cobrindo rota / primeira carga / dados exibidos / estado vazio / falha da API / mutacao com sucesso / mutacao com falha",
+        "Existe E2E cobrindo registro de rubrica -> upload -> marcacao da area -> e-mail recebido -> assinatura com senha -> etapa visivel na linha do tempo",
+        "O E2E roda contra servicos reais e nao contra a fronteira HTTP simulada",
+        "Nenhuma evidencia de smoke e produzida com a API simulada"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Relatorio da suite de componentes + relatorio Playwright da jornada de assinatura contra o stack real"
+        ]
+      }
+    },
+    {
+      "id": "REQ-029",
+      "demand_id": "DEM-002",
+      "statement": "O signatario pode recusar a solicitacao informando justificativa e o solicitante ou um administrador pode cancelar uma pendencia; ambos os atos viram etapa na linha do tempo",
+      "priority": "should",
+      "acceptance": [
+        "Recusar exige justificativa nao vazia",
+        "A recusa encerra a pendencia e registra autor / horario / justificativa",
+        "Cancelar uma pendencia so e permitido ao solicitante ou a um administrador",
+        "Um signatario nao consegue cancelar solicitacao dirigida a outra pessoa"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API de recusa e cancelamento incluindo os casos de permissao negada"
+        ]
+      }
+    },
+    {
+      "id": "REQ-030",
+      "demand_id": "DEM-002",
+      "statement": "Telas e controles da SPA sao operaveis por teclado com foco visivel + nomes acessiveis + contraste WCAG AA + modais com trap e restauracao de foco",
+      "priority": "should",
+      "acceptance": [
+        "A jornada de assinatura e concluida usando somente o teclado",
+        "Abrir um modal move o foco para dentro dele e fecha-lo restaura o foco no elemento anterior",
+        "Todo controle representado apenas por icone tem nome acessivel",
+        "Auditoria automatizada de acessibilidade nao acusa violacao de contraste nas telas principais"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente navegando por teclado + relatorio de auditoria automatizada de acessibilidade"
+        ]
+      }
+    },
+    {
+      "id": "REQ-031",
+      "demand_id": "DEM-002",
+      "statement": "Depois de comprovada a paridade da SPA o codigo do Streamlit e seu extra de dependencia sao removidos do repositorio",
+      "priority": "should",
+      "acceptance": [
+        "streamlit_app/ e tests/test_streamlit_ui.py deixam de existir",
+        "O extra ui e as dependencias de streamlit saem do pyproject.toml",
+        "Nenhuma documentacao continua instruindo a rodar a UI Streamlit",
+        "A suite de testes passa integralmente apos a remocao"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Saida de pytest e ruff apos a remocao + diff mostrando a limpeza de pyproject.toml e docs"
+        ]
+      }
+    },
+    {
+      "id": "REQ-032",
+      "demand_id": "DEM-002",
+      "statement": "A SPA oferece um painel listando os documentos que aguardam assinatura do usuario autenticado",
+      "priority": "could",
+      "acceptance": [
+        "O painel lista somente pendencias dirigidas ao proprio usuario",
+        "Cada item leva direto a tela de assinatura do documento",
+        "Sem pendencias o painel mostra estado vazio proprio"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente do painel cobrindo lista preenchida e estado vazio"
+        ]
+      }
     }
   ],
   "gaps": [
@@ -361,7 +663,47 @@
       "blocks": [
         "REQ-015"
       ],
-      "resolution": "Resolvido: terminação HTTPS via Caddy com TLS automático. docker/Caddyfile faz reverse_proxy para api:8000; o serviço caddy no docker-compose.yml expõe 443 e provisiona certificado por CADDY_DOMAIN (Let's Encrypt em domínio real, self-signed em localhost). Evidência em NODE-016. Pendência não-bloqueante: confirmar domínio/cert de produção."
+      "resolution": "Resolvido: terminacao HTTPS via Caddy com TLS automatico. docker/Caddyfile provisiona certificado por CADDY_DOMAIN (Let's Encrypt em dominio real; certificado interno em localhost) e expoe 443. A partir do NODE-024 o Caddy passou a viver em docker/Dockerfile.web e nao mais como imagem solta no compose: o mesmo servico agora serve a SPA como estatico e publica a API sob /api via handle_path (que remove o prefixo antes do reverse_proxy para api:8000). Com isso SPA e API compartilham uma unica origem e nenhuma requisicao do navegador atravessa origens, dispensando CORS. Evidencia em NODE-016 (terminacao original) e NODE-024 (origem unica + smoke contra o stack real). Pendencia nao-bloqueante: confirmar dominio e certificado de producao."
+    },
+    {
+      "id": "GAP-003",
+      "type": "dependency",
+      "severity": "major",
+      "question": "Qual servidor SMTP entregara os e-mails de solicitacao de assinatura em producao e qual e a URL publica base usada nos links diretos? Sem GED_SMTP_HOST configurado o sistema cai no ConsoleEmailSender e apenas registra o token em log; para esta demanda o e-mail nao e opcional. Falta tambem definir se o E2E usara Mailpit no compose de teste.",
+      "blocks": [
+        "REQ-021"
+      ],
+      "resolution": "Resolvido: Google Workspace via SMTP relay em smtp-relay.gmail.com porta 587 com STARTTLS e autenticacao por IP allowlist (Admin console > Apps > Gmail > Routing > SMTP relay service). App Passwords do Workspace foram descontinuados e smtp.gmail.com com usuario e senha nao e mais opcao; o relay por IP dispensa credencial. Impacto zero no transporte porque app/services/email.py linha 88 ja condiciona server.login a user e password preenchidos. Duas consequencias de configuracao: GED_SMTP_USER e GED_SMTP_PASSWORD ficam vazios e GED_SMTP_FROM passa a ser obrigatorio porque o fallback da linha 108 cai em smtp_user vazio e produziria cabecalho From em branco -- exige validacao na subida. Introduzir GED_APP_URL_BASE como base publica unica derivada de CADDY_DOMAIN e derivar dela tanto o link de assinatura quanto o de reset aposentando reset_url_base. E2E usa Mailpit em docker-compose.test.yml. Pendencia nao-bloqueante: confirmar IP publico de saida estatico em producao; sem IP fixo o caminho alternativo e XOAUTH2 via smtplib com service account e delegacao de dominio."
+    },
+    {
+      "id": "GAP-004",
+      "type": "privacy",
+      "severity": "major",
+      "question": "A imagem da rubrica manuscrita e dado pessoal de natureza sensivel sob a LGPD. Onde ela sera armazenada (MinIO com o mesmo bucket dos documentos ou coluna no banco)? Havera controle de acesso proprio para que so o titular e o motor de carimbo a leiam? Existe politica de retencao e de exclusao quando o usuario e desativado?",
+      "blocks": [
+        "REQ-019"
+      ],
+      "resolution": "Resolvido: separar rubrica de perfil (mutavel e apagavel pelo titular) de rubrica carimbada (snapshot imutavel gravado no ato da assinatura junto ao registro). Assim o titular exerce o direito de exclusao sem destruir assinaturas passadas. Armazenamento em MinIO no mesmo bucket sob prefixo rubricas/ seguindo o padrao ja existente de arquivo para MinIO e metadado para Postgres. Sem endpoint que sirva rubrica por user_id e sem presigned URL: a imagem so sai do servidor para o proprio titular na tela de perfil ou embutida no PDF carimbado. Desativacao de usuario nao apaga a rubrica porque desativacao preserva tudo para permitir reativacao; carimbos nunca sao apagados por serem registro de auditoria. Trabalho descoberto: o protocolo ObjectStorage em app/storage.py nao tem delete_object e precisa ganhar um nas tres implementacoes. Aviso de coleta exibido na tela de registro da rubrica. Ressalva: isto e desenho de engenharia e nao parecer juridico; o texto do aviso deve ser validado por assessoria."
+    },
+    {
+      "id": "GAP-005",
+      "type": "architecture",
+      "severity": "warning",
+      "question": "Quais bibliotecas farao a renderizacao de PDF no navegador (pdf.js ou equivalente) e o carimbo no servidor (pypdf + reportlab ou pikepdf)? A escolha afeta orcamento de bundle no front e peso do container no back e precisa ser decidida no plan-graph antes da implementacao.",
+      "blocks": [
+        "REQ-025"
+      ],
+      "resolution": "Resolvido: no navegador pdfjs-dist usado diretamente e carregado sob demanda por rota em vez de react-pdf porque o REQ-020 exige acesso ao canvas e ao viewport para converter coordenada de tela em coordenada de pagina -- react-pdf embrulharia justamente essa camada. No servidor pypdf para leitura e merge mais reportlab para gerar o overlay da rubrica e a pagina de conferencia; ambos Python puro sem binario nativo o que preserva o peso do container que era a preocupacao registrada neste gap. Descartados pikepdf por trazer qpdf nativo e LibreOffice por ja ser nao-objetivo da demanda. Convencao de coordenadas: armazenar normalizadas de 0 a 1 com origem no canto superior esquerdo como o usuario desenhou e converter para a origem inferior esquerda do PDF apenas no momento do carimbo; gravar tambem page_width e page_height em pontos no ato da marcacao para tratar corretamente PDFs com paginas de tamanhos diferentes."
+    },
+    {
+      "id": "GAP-006",
+      "type": "scope",
+      "severity": "warning",
+      "question": "A demanda soma uma SPA completa em paridade com o Streamlit e um subsistema de assinatura inedito. Ela deve ser entregue como uma unica onda ou dividida em duas fases (fundacao da SPA com paridade primeiro e assinaturas depois)? A decisao pertence ao plan-graph mas muda o desenho dos tracks.",
+      "blocks": [
+        "REQ-026"
+      ],
+      "resolution": "Resolvido: duas fases. O grafo tem um gargalo natural porque REQ-026 e REQ-031 nao dependem de nenhum requisito de assinatura enquanto todos os requisitos de assinatura dependem do REQ-027. Fase 1 entrega fundacao e paridade: REQ-027 entao REQ-018 entao REQ-026 entao REQ-031 com a SPA substituindo o Streamlit em producao sem funcionalidade nova. Fase 2 entrega o subsistema de assinatura: REQ-019 REQ-020 REQ-021 REQ-022 REQ-023 REQ-024 REQ-025 mais REQ-029 REQ-030 REQ-032 e o E2E completo do REQ-028. O requerente confirmou em 2026-08-15 que a assinatura nao e urgente o que torna aceitavel a fase 1 nao entregar funcionalidade nova ao usuario final."
     }
   ],
   "tracks": [
@@ -376,6 +718,21 @@
     {
       "id": "TRK-release",
       "title": "Release"
+    },
+    {
+      "id": "TRK-spa-foundation",
+      "title": "SPA Foundation e Paridade",
+      "description": "Fase 1: fundacao arquitetural da SPA + shell SEI + paridade funcional com o Streamlit"
+    },
+    {
+      "id": "TRK-signature-api",
+      "title": "Assinatura - API",
+      "description": "Fase 2 backend: rubrica + solicitacao + ato de assinar + linha do tempo + carimbo do PDF"
+    },
+    {
+      "id": "TRK-signature-ui",
+      "title": "Assinatura - UI e E2E",
+      "description": "Fase 2 frontend: visualizador PDF com marcacao de area + telas de rubrica e assinatura + E2E contra stack real"
     }
   ],
   "nodes": [
@@ -799,6 +1156,651 @@
           "artefato: procedimento de restauracao do backup documentado e testado"
         ],
         "evidence_path": "delivery-graph/demands/DEM-001/evidence/NODE-017/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-018",
+      "title": "Scaffold da SPA: Vite + React + TypeScript estrito + Vitest/Testing Library + tokens CSS + caminho-base configuravel",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-027",
+        "REQ-028"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Checagem de tipos passa e o build falha quando ha erro de tipo (comprovado por erro proposital)",
+          "Lint passa e a regra que proibe fetch fora da fronteira de dados esta ativa",
+          "Build de producao gera artefato e emite relatorio de tamanho de bundle",
+          "Vitest + Testing Library executam um teste de exemplo por papel/nome acessivel",
+          "Tokens CSS semanticos definidos em :root com tema claro/escuro por token e nenhuma cor literal no codigo",
+          "Aplicacao carrega sob caminho-base configurado e nao apenas em /"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-018/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-019",
+      "title": "Fronteira de dados tipada: transporte unico + contratos da API + validacao de resposta + estados remotos discriminados",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-027"
+      ],
+      "depends_on": [
+        "NODE-018"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Uma unica funcao de transporte resolve URL-base + token + cabecalhos + erros uniformes e suporta AbortSignal",
+          "Resposta 204 e resposta nao-JSON sao tratadas sem presumir corpo JSON",
+          "Dados externos relevantes sao validados em runtime e nao apenas tipados",
+          "RemoteState discriminado distingue loading / revalidating / empty / error / success",
+          "Erros de autenticacao autorizacao validacao conflito e rede sao diferenciados na fronteira",
+          "A regra de lint falha quando um componente chama fetch diretamente (comprovado por violacao proposital)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-019/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-020",
+      "title": "Autenticacao na SPA: login + rota protegida + /auth/me + refresh + esqueci minha senha",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-026",
+        "REQ-027"
+      ],
+      "depends_on": [
+        "NODE-019"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Login autentica contra a API real e persiste o token fora de armazenamento sensivel indevido",
+          "Rota protegida sem sessao redireciona ao login e retorna ao destino original apos autenticar",
+          "O papel do usuario vem de GET /auth/me e nao do payload do JWT",
+          "Refresh renova o access token sem deslogar o usuario",
+          "Credencial invalida mostra erro acionavel e nao revela se o usuario existe",
+          "Testes de componente cobrem sucesso e falha de login sem chamar servico real"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-020/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-021",
+      "title": "Shell SEI: obra como processo + lista de documentos a esquerda em ordem de inclusao + documento a direita + barra de acoes + rota compartilhavel",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-018"
+      ],
+      "depends_on": [
+        "NODE-020"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Obra com 3 documentos os exibe do mais antigo para o mais novo",
+          "Selecionar documento na lista o renderiza a direita sem recarregar a pagina",
+          "A rota reflete obra e documento de modo que recarregar o navegador restaura a mesma tela",
+          "Obra sem documentos mostra estado vazio proprio e nao mensagem de erro",
+          "A renderizacao despacha pelo Content-Type devolvido pelo download e nunca pela extensao do arquivo",
+          "Regiao de rolagem unica definida; a pagina nao rola horizontalmente"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-021/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-022",
+      "title": "Documentos na SPA: upload + nova versao + download + aprovacao e rejeicao",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-026"
+      ],
+      "depends_on": [
+        "NODE-021"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Upload envia os tipos que a API realmente valida e o campo de obra usa o tipo que o backend espera (licao do NODE-015: campo de texto para UUID quebrou todo upload)",
+          "Nova versao cria versao nova e o status volta para enviado",
+          "Duplicata por hash na mesma obra e sinalizada e nao re-armazenada silenciosamente",
+          "Aprovar e rejeitar respeitam a regra de que o criador nao decide sobre a propria submissao",
+          "Transicao invalida de status mostra o erro vindo da API sem quebrar a tela",
+          "Cada tela distingue primeira carga / revalidacao / vazio / erro / sucesso"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-022/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-023",
+      "title": "Administracao na SPA: usuarios e obras incluindo papeis ativar desativar arquivar e restaurar",
+      "type": "implementation",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-026"
+      ],
+      "depends_on": [
+        "NODE-021"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "A area so aparece para papel administrador conforme GET /auth/me",
+          "A area continua acessivel com zero obras cadastradas",
+          "Restaurar obra arquivada funciona mesmo quando ela era a unica obra do sistema",
+          "Administrador recebe 403 ao tentar desativar a si mesmo ou remover o proprio papel e a UI explica o motivo",
+          "O controle de ativar/desativar reflete o estado do usuario selecionado sem exigir novo envio"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-023/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-024",
+      "title": "Deploy da SPA na mesma origem: build multi-stage no Docker + Caddy servindo estatico ao lado da API",
+      "type": "release",
+      "track": "TRK-spa-foundation",
+      "requirement_ids": [
+        "REQ-027",
+        "REQ-026"
+      ],
+      "depends_on": [
+        "NODE-022",
+        "NODE-023"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "docker compose up serve SPA e API na mesma origem sem necessidade de CORS",
+          "Acesso direto a uma rota filha funciona e atualizar o navegador nela tambem",
+          "Chamada de API nao duplica o prefixo do caminho-base",
+          "Build falha e nao publica quando a checagem de tipos falha",
+          "Smoke manual contra o stack real percorre login e listagem de documentos (nao vale execucao com a API simulada)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-024/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-025",
+      "title": "Remocao do Streamlit apos paridade comprovada",
+      "type": "release",
+      "track": "TRK-release",
+      "requirement_ids": [
+        "REQ-031"
+      ],
+      "depends_on": [
+        "NODE-024"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "streamlit_app/ e tests/test_streamlit_ui.py deixam de existir",
+          "O extra ui e as dependencias de streamlit saem do pyproject.toml e do lockfile",
+          "README CLAUDE.md e scripts nao instruem mais a rodar a UI Streamlit",
+          "scripts/smoke_streamlit_ui.py e substituido ou removido conforme a SPA",
+          "pytest e ruff check passam integralmente apos a remocao"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-025/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-026",
+      "title": "Rubrica: modelo + armazenamento em MinIO sob prefixo rubricas/ + delete_object no protocolo ObjectStorage",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-019"
+      ],
+      "depends_on": [],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Rubrica gravada como PNG sob prefixo rubricas/ no bucket existente com metadado no Postgres",
+          "Apenas o titular grava e le a propria rubrica; administrador recebe 403 ao tentar gravar ou ler rubrica alheia",
+          "Nenhum endpoint devolve rubrica por user_id de terceiro e nenhuma URL presigned e exposta",
+          "delete_object adicionado as tres implementacoes de ObjectStorage (protocolo InMemory e MinIO) com teste em cada",
+          "Titular consegue apagar a propria rubrica de perfil e o objeto some do armazenamento",
+          "Desativar usuario nao apaga a rubrica porque desativacao preserva o cadastro para reativacao"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-026/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-027",
+      "title": "Solicitacao de assinatura: modelo + API com vinculo a versao pagina e coordenadas normalizadas",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-020"
+      ],
+      "depends_on": [
+        "NODE-026"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Criar solicitacao vincula a versao atual do documento e grava pagina + coordenadas normalizadas de 0 a 1 com origem no canto superior esquerdo",
+          "page_width e page_height em pontos sao gravados no ato da marcacao para tratar PDFs com paginas de tamanhos diferentes",
+          "Indicar signatario sem acesso a obra do documento retorna 403 (o escopo de app/scope.py e aplicado na consulta e nao so no roteador)",
+          "Documento cujo content type nao e PDF recusa a criacao de solicitacao",
+          "Um mesmo documento aceita varias solicitacoes para signatarios diferentes sem ordem obrigatoria entre elas",
+          "Somente criador do documento administrador ou diretor podem solicitar assinatura"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-027/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-028",
+      "title": "E-mail de solicitacao de assinatura: send_signature_request nas quatro implementacoes + GED_APP_URL_BASE + validacao de config na subida",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-021"
+      ],
+      "depends_on": [
+        "NODE-027",
+        "NODE-021"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Criar solicitacao envia exatamente um e-mail ao endereco do signatario",
+          "O corpo traz nome do documento + obra + quem solicitou + link derivado de GED_APP_URL_BASE apontando para a rota de assinatura da SPA",
+          "Falha de SMTP nao impede a criacao da solicitacao e e registrada em log",
+          "A aplicacao recusa subir quando GED_SMTP_HOST esta definido e GED_SMTP_FROM esta vazio (com relay por IP o fallback para smtp_user produziria um cabecalho From em branco)",
+          "Sem GED_SMTP_HOST o ConsoleEmailSender continua sendo o caminho de desenvolvimento",
+          "InMemoryEmailSender captura a mensagem em teste sem servico externo"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-028/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-029",
+      "title": "Ato de assinar: confirmacao por senha + snapshot imutavel da rubrica + registro do signatario data-hora e versao",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-022"
+      ],
+      "depends_on": [
+        "NODE-027"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Senha correta conclui a assinatura e grava signatario + data-hora + versao assinada",
+          "A rubrica e copiada como snapshot no ato da assinatura e a assinatura sobrevive intacta a troca ou exclusao da rubrica de perfil do titular",
+          "Senha incorreta recusa a assinatura e a solicitacao permanece pendente",
+          "Somente o signatario indicado consegue assinar aquela solicitacao; outro usuario recebe 403",
+          "Assinar uma solicitacao ja assinada e rejeitado",
+          "Assinar nao altera o status de aprovacao do documento nem cria nova versao"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-029/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-030",
+      "title": "Recusa com justificativa e cancelamento de pendencia",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-029"
+      ],
+      "depends_on": [
+        "NODE-029"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Recusar exige justificativa nao vazia",
+          "A recusa encerra a pendencia e registra autor + horario + justificativa",
+          "Cancelar uma pendencia so e permitido ao solicitante ou a um administrador",
+          "Signatario recebe 403 ao tentar cancelar solicitacao dirigida a outra pessoa",
+          "Pendencia recusada ou cancelada nao pode mais ser assinada"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-030/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-031",
+      "title": "Nova versao cancela automaticamente as pendencias daquela versao e notifica os signatarios",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-024"
+      ],
+      "depends_on": [
+        "NODE-029"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Enviar nova versao com 2 pendencias abertas deixa as 2 canceladas",
+          "O cancelamento automatico gera registro com o motivo e notifica cada signatario afetado",
+          "Assinaturas ja concluidas continuam consultaveis e permanecem vinculadas a versao em que foram feitas",
+          "Depois do cancelamento nenhum signatario consegue assinar a solicitacao antiga",
+          "O comportamento existente de reset_for_new_version continua valendo e nao e alterado por este no"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-031/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-032",
+      "title": "Linha do tempo: AuditAction estendido com as acoes de assinatura e endpoint de etapas do documento",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-023"
+      ],
+      "depends_on": [
+        "NODE-030",
+        "NODE-031"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "As nove acoes (upload nova versao envio para analise aprovacao rejeicao solicitacao assinatura recusa cancelamento) geram cada uma exatamente um registro com autor e horario",
+          "O endpoint de historico devolve as etapas em ordem cronologica",
+          "Etapas de assinatura trazem o nome do signatario e o horario da assinatura",
+          "Nenhum endpoint permite editar ou apagar um registro da linha do tempo",
+          "O escopo de obra e aplicado: usuario sem acesso a obra nao le a linha do tempo do documento"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-032/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-033",
+      "title": "Carimbo do PDF sob demanda com pypdf e reportlab: rubricas nas areas marcadas + pagina de conferencia + original intocado",
+      "type": "implementation",
+      "track": "TRK-signature-api",
+      "requirement_ids": [
+        "REQ-025"
+      ],
+      "depends_on": [
+        "NODE-029"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Baixar documento assinado retorna PDF com a rubrica na pagina e coordenadas registradas",
+          "O PDF traz pagina final de conferencia com nome horario e versao de cada signatario",
+          "O hash SHA-256 do objeto original no armazenamento e identico antes e depois da assinatura",
+          "Documento sem assinatura baixa o arquivo original byte a byte sem alteracao",
+          "Gerar o carimbo nao cria nova versao nem altera o status de aprovacao do documento",
+          "A conversao de origem superior esquerda para a origem inferior esquerda do PDF posiciona corretamente em documento com paginas de tamanhos diferentes",
+          "Nenhum binario nativo e adicionado ao container (pypdf e reportlab sao Python puro)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-033/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-034",
+      "title": "Registro da rubrica no primeiro acesso: canvas + guard de rota + aviso de coleta",
+      "type": "implementation",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-019"
+      ],
+      "depends_on": [
+        "NODE-026",
+        "NODE-020"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Usuario sem rubrica e redirecionado a tela de registro em qualquer rota protegida que tente abrir",
+          "Canvas vazio nao permite salvar e informa o motivo",
+          "Apos salvar o usuario segue para o destino que tentava acessar",
+          "Usuario que ja possui rubrica nunca ve essa tela",
+          "Aviso de coleta explica o que e guardado e para que antes do desenho",
+          "O canvas funciona com mouse e com ponteiro de toque/caneta"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-034/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-035",
+      "title": "Visualizador de PDF com marcacao de area: pdfjs-dist sob demanda + retangulo + normalizacao de coordenadas",
+      "type": "implementation",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-020",
+        "REQ-027"
+      ],
+      "depends_on": [
+        "NODE-027",
+        "NODE-021"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Desenhar um retangulo na pagina 2 e escolher um signatario cria solicitacao pendente vinculada a versao atual",
+          "O quadrado cai no mesmo ponto da pagina em qualquer nivel de zoom (coordenadas normalizadas e nao pixels de tela)",
+          "Documento que nao e PDF nao oferece a acao de solicitar assinatura",
+          "pdfjs-dist e carregado sob demanda e nao entra no chunk inicial (comprovado no relatorio de bundle)",
+          "A area de assinatura pode ser posicionada e confirmada apenas com teclado",
+          "Estados de carga do PDF e de falha ao carregar sao distintos e acionaveis"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-035/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-036",
+      "title": "Tela de assinatura: confirmacao por senha + retorno do login pelo link do e-mail",
+      "type": "implementation",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-022",
+        "REQ-021"
+      ],
+      "depends_on": [
+        "NODE-029",
+        "NODE-028",
+        "NODE-034"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "Senha correta conclui a assinatura e a rubrica aparece na area marcada com nome e horario",
+          "Senha incorreta mantem a pendencia e mostra erro acionavel",
+          "O botao de confirmar fica desabilitado durante o envio impedindo assinatura duplicada",
+          "Abrir o link do e-mail sem sessao passa pelo login e retorna a tela de assinatura do documento correto",
+          "O modal de confirmacao move o foco para dentro prende Tab e restaura o foco ao fechar",
+          "A senha nunca e registrada em log nem persistida no cliente"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-036/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-037",
+      "title": "Linha do tempo das etapas na pasta da obra",
+      "type": "implementation",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-023"
+      ],
+      "depends_on": [
+        "NODE-032",
+        "NODE-021"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "As etapas aparecem na tela do documento em ordem cronologica com autor e horario",
+          "Assinaturas aparecem com o nome do signatario e o horario da assinatura",
+          "Documento sem etapas alem do upload mostra a linha do tempo minima e nao um vazio generico",
+          "Estados de carga revalidacao e erro sao distintos"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-037/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-038",
+      "title": "Painel aguardando minha assinatura",
+      "type": "implementation",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-032"
+      ],
+      "depends_on": [
+        "NODE-036"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "O painel lista somente pendencias dirigidas ao proprio usuario autenticado",
+          "Cada item leva direto a tela de assinatura do documento correspondente",
+          "Sem pendencias o painel mostra estado vazio proprio e nao um erro"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-038/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-039",
+      "title": "Acessibilidade da jornada de assinatura: teclado foco contraste e modais",
+      "type": "test",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-030"
+      ],
+      "depends_on": [
+        "NODE-036",
+        "NODE-037"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "A jornada completa de assinatura e concluida usando somente o teclado",
+          "Abrir um modal move o foco para dentro dele e fecha-lo restaura o foco no elemento anterior",
+          "Todo controle representado apenas por icone tem nome acessivel",
+          "Auditoria automatizada de acessibilidade nao acusa violacao de contraste nas telas principais",
+          "Estados nao dependem somente de cor e prefers-reduced-motion e respeitado"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-039/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-040",
+      "title": "E2E Playwright da jornada completa de assinatura contra o stack real com Mailpit",
+      "type": "test",
+      "track": "TRK-signature-ui",
+      "requirement_ids": [
+        "REQ-028"
+      ],
+      "depends_on": [
+        "NODE-036",
+        "NODE-037",
+        "NODE-033"
+      ],
+      "status": "proposed",
+      "validation": {
+        "required": [
+          "docker-compose.test.yml sobe API + Postgres + MinIO + Mailpit e o E2E roda contra esses servicos reais",
+          "O teste cobre registro da rubrica -> upload de PDF -> marcacao da area -> e-mail recebido no Mailpit -> assinatura com senha -> etapa visivel na linha do tempo",
+          "O link do e-mail e extraido do Mailpit e realmente abre a tela de assinatura correta",
+          "O download apos a assinatura devolve PDF carimbado e o hash do objeto original segue inalterado",
+          "Nenhuma evidencia deste no e produzida com a fronteira HTTP simulada (licao do NODE-015: execucao mockada nao vale como smoke)",
+          "Relatorio do Playwright anexado como artefato de evidencia"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-040/"
       },
       "sync": {
         "linear_issue_id": null,

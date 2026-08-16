@@ -1,0 +1,103 @@
+{
+  "node_id": "NODE-019",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/http.test.ts passed",
+      "satisfies": "Uma unica funcao de transporte resolve URL-base + token + cabecalhos + erros uniformes e suporta AbortSignal",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/http.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T22:41:20.455Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/http.test.ts -t respostas sem corpo JSON passed",
+      "satisfies": "Resposta 204 e resposta nao-JSON sao tratadas sem presumir corpo JSON",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/http.test.ts",
+        "-t",
+        "respostas sem corpo JSON"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T22:41:26.056Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/contracts.test.ts passed",
+      "satisfies": "Dados externos relevantes sao validados em runtime e nao apenas tipados",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/contracts.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T22:41:31.575Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/useApiData.test.tsx passed",
+      "satisfies": "RemoteState discriminado distingue loading / revalidating / empty / error / success",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/useApiData.test.tsx"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T22:41:38.093Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/http.test.ts -t taxonomia de erros passed",
+      "satisfies": "Erros de autenticacao autorizacao validacao conflito e rede sao diferenciados na fronteira",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/http.test.ts",
+        "-t",
+        "taxonomia de erros"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T22:41:43.723Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "manual",
+      "summary": "Com a fronteira real em src/data/http.ts (duas chamadas fetch), eslint passa (exit 0); o mesmo codigo em src/features/ reprova com no-restricted-globals (exit 1). A regra distingue o local da chamada.",
+      "satisfies": "A regra de lint falha quando um componente chama fetch diretamente (comprovado por violacao proposital)",
+      "result": "pass",
+      "artifact": "artifacts/EVD-006-PROOF-fetch-only-in-boundary.txt",
+      "created_at": "2026-08-15T22:41:51.457Z"
+    }
+  ]
+}

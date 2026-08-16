@@ -1,0 +1,71 @@
+{
+  "node_id": "NODE-025",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "manual",
+      "summary": "Ambos removidos, junto com .streamlit/ (tema) e scripts/smoke_streamlit_ui.py. Antes da remocao foi feita auditoria de paridade endpoint a endpoint: 20 de 21 funcoes do api_client tem contrapartida na SPA e a 21a (history) nunca era renderizada por nenhuma tela.",
+      "satisfies": "streamlit_app/ e tests/test_streamlit_ui.py deixam de existir",
+      "result": "pass",
+      "artifact": "artifacts/EVD-001-PROOF-matriz-de-paridade.txt",
+      "created_at": "2026-08-16T00:07:51.005Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "manual",
+      "summary": "Extra [project.optional-dependencies].ui removido por inteiro e streamlit[pdf] retirado do grupo dev. requests tambem saiu: era usado apenas pelo cliente Streamlit. uv sync desinstalou streamlit 1.58.0, streamlit-pdf 2.0.1 e dependencias transitivas; 0 ocorrencias de streamlit no uv.lock.",
+      "satisfies": "O extra ui e as dependencias de streamlit saem do pyproject.toml e do lockfile",
+      "result": "pass",
+      "artifact": "artifacts/EVD-002-PROOF-remocao-verificada.txt",
+      "created_at": "2026-08-16T00:07:51.622Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "manual",
+      "summary": "README: 0 mencoes; secao de execucao substituida pelos comandos do frontend e o snippet de cadastro de obras reescrito com urllib em vez de requests+api_client. CLAUDE.md: bloco Streamlit UI substituido pela descricao da SPA (fronteira unica, taxonomia de erro por category, RemoteState, armazenamento de sessao, as duas camadas de teste) e limitacoes obsoletas trocadas pelas reais.",
+      "satisfies": "README CLAUDE.md e scripts nao instruem mais a rodar a UI Streamlit",
+      "result": "pass",
+      "artifact": "artifacts/EVD-003-PROOF-remocao-verificada.txt",
+      "created_at": "2026-08-16T00:07:52.199Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "manual",
+      "summary": "Removido. O papel dele passa a ser cumprido por src/data/*.integration.test.ts (fronteira real contra API real, ativado por GED_LIVE_API=1) e pelo smoke de docker compose registrado no NODE-024. Ambos documentados no README no lugar do script antigo.",
+      "satisfies": "scripts/smoke_streamlit_ui.py e substituido ou removido conforme a SPA",
+      "result": "pass",
+      "artifact": "artifacts/EVD-004-PROOF-remocao-verificada.txt",
+      "created_at": "2026-08-16T00:07:52.809Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest passed",
+      "satisfies": "pytest e ruff check passam integralmente apos a remocao",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-16T00:09:38.284Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m ruff check . passed",
+      "satisfies": "pytest e ruff check passam integralmente apos a remocao",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-16T00:09:46.096Z"
+    }
+  ]
+}

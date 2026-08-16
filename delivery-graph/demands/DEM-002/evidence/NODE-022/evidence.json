@@ -1,0 +1,108 @@
+{
+  "node_id": "NODE-022",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/documentos.integration.test.ts passed",
+      "satisfies": "Upload envia os tipos que a API realmente valida e o campo de obra usa o tipo que o backend espera (licao do NODE-015: campo de texto para UUID quebrou todo upload)",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/documentos.integration.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:25:52.506Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos src/features/obras passed",
+      "satisfies": "Cada tela distingue primeira carga / revalidacao / vazio / erro / sucesso",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos",
+        "src/features/obras"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:26:26.041Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/documentos.integration.test.ts passed",
+      "satisfies": "Nova versao cria versao nova e o status volta para enviado",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/documentos.integration.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:26:48.770Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/documentos.integration.test.ts passed",
+      "satisfies": "Duplicata por hash na mesma obra e sinalizada e nao re-armazenada silenciosamente",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/documentos.integration.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:26:54.388Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/documentos.integration.test.ts passed",
+      "satisfies": "Aprovar e rejeitar respeitam a regra de que o criador nao decide sobre a propria submissao",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/documentos.integration.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:26:59.959Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/data/documentos.integration.test.ts passed",
+      "satisfies": "Transicao invalida de status mostra o erro vindo da API sem quebrar a tela",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/data/documentos.integration.test.ts"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-15T23:27:05.502Z"
+    }
+  ]
+}

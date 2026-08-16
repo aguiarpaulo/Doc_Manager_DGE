@@ -51,18 +51,23 @@ services:
       minio:
         condition: service_healthy
 
-  # HTTPS termination (GAP-002). Default choice: Caddy with automatic TLS.
-  # For a real domain set CADDY_DOMAIN and Caddy provisions a certificate automatically;
-  # locally it falls back to an internal self-signed cert.
-  caddy:
-    image: caddy:2-alpine
+  # Origem unica: serve a SPA como estatico e publica a API sob /api, com
+  # terminacao HTTPS automatica (GAP-002). Como os dois lados compartilham a
+  # origem, nao existe requisicao entre origens e portanto nao ha CORS.
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        # Caminho-base do bundle e base da API sao configuracao de build.
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     environment:
       CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
     ports:
       - "443:443"
       - "80:80"
     volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

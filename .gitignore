@@ -214,8 +214,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Streamlit
-.streamlit/secrets.toml
+# Frontend (SPA)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/bundle-report.html
 
 # GED backups (local dumps)
 /backups/

@@ -1,0 +1,34 @@
+# Serve a SPA e publica a API sob a mesma origem.
+#
+# Estagio 1 constroi o bundle; estagio 2 e o Caddy que o serve. Assim o Node nao
+# vai para a imagem final: o que roda em producao sao arquivos estaticos e um
+# proxy reverso, sem runtime de JavaScript no servidor.
+
+FROM node:24-alpine AS build
+
+WORKDIR /app
+
+# Instalacao determinista pelo lockfile, antes do codigo, para aproveitar cache.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+
+# Caminho-base do bundle. A raiz e o padrao; um sub-caminho e configuracao, nao
+# uma reescrita de codigo.
+ARG VITE_BASE_PATH=/
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
+
+# A API vive sob /api na mesma origem; o Caddy remove esse prefixo ao repassar.
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# `npm run build` e `tsc --noEmit && vite build`: erro de tipo derruba a imagem
+# em vez de virar um bundle que ninguem checou.
+RUN npm run build
+
+
+FROM caddy:2-alpine
+
+COPY --from=build /app/dist /srv
+COPY docker/Caddyfile /etc/caddy/Caddyfile
