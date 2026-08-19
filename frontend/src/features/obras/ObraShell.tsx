@@ -16,6 +16,7 @@ import * as api from "../../data/api.ts";
 import type { Documento, Obra } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { MinhasPendencias } from "../assinatura/MinhasPendencias.tsx";
 import { FormularioUpload } from "../documentos/FormularioUpload.tsx";
 import { PainelDocumento } from "../documentos/PainelDocumento.tsx";
 import "./shell.css";
@@ -93,6 +94,10 @@ export function ObraShell() {
 
       <div className="shell__corpo">
         <nav className="shell__lista" aria-label="Documentos da obra">
+          {/* Antes da lista da obra: o que espera a pessoa vale mais que o
+              acervo, e some sozinho quando nao ha nada. */}
+          <MinhasPendencias />
+
           {documentos.estado.status === "loading" && (
             <p className="estado-vazio" role="status">
               Carregando documentos...

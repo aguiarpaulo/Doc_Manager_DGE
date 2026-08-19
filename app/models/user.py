@@ -13,6 +13,7 @@ from app.db import Base
 
 if TYPE_CHECKING:
     from app.models.obra import Obra
+    from app.models.signature import UserSignature
 
 
 class Role(enum.StrEnum):
@@ -41,3 +42,15 @@ class User(Base):
     obras: Mapped[list["Obra"]] = relationship(
         secondary="user_obra", back_populates="users"
     )
+
+    # The registered rubric. Deleting it is a normal operation (personal data the
+    # owner may withdraw); deleting the user is not, which is why the two live in
+    # separate tables.
+    signature: Mapped["UserSignature | None"] = relationship(
+        "UserSignature", uselist=False, cascade="all, delete-orphan"
+    )
+
+    @property
+    def has_signature(self) -> bool:
+        """Exposed by `UserRead` so the SPA knows whether to demand registration."""
+        return self.signature is not None

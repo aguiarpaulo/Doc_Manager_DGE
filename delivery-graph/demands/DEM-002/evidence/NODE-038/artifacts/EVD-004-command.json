@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "src/features/assinatura/MinhasPendencias.test.tsx",
+    "-t",
+    "estado vazio proprio or distingue falha or primeira carga"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 skipped (1)\n      Tests  7 skipped (7)\n   Start at  12:17:25\n   Duration  4.42s (transform 266ms, setup 648ms, import 331ms, tests 0ms, environment 2.94s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T15:17:30.117Z",
+  "artifacts": []
+}

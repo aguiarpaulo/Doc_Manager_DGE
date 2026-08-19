@@ -1,0 +1,113 @@
+{
+  "node_id": "NODE-027",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k binds_to_the_current_version or area_outside or page_number_is_one_based passed",
+      "satisfies": "Criar solicitacao vincula a versao atual do documento e grava pagina + coordenadas normalizadas de 0 a 1 com origem no canto superior esquerdo",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "binds_to_the_current_version or area_outside or page_number_is_one_based"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:27:57.504Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k page_size_in_points passed",
+      "satisfies": "page_width e page_height em pontos sao gravados no ato da marcacao para tratar PDFs com paginas de tamanhos diferentes",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "page_size_in_points"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:28:04.305Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k outside_the_obra or diretor_may_be_asked or unknown_or_inactive passed",
+      "satisfies": "Indicar signatario sem acesso a obra do documento retorna 403 (o escopo de app/scope.py e aplicado na consulta e nao so no roteador)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "outside_the_obra or diretor_may_be_asked or unknown_or_inactive"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:28:15.061Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k non_pdf or without_a_file passed",
+      "satisfies": "Documento cujo content type nao e PDF recusa a criacao de solicitacao",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "non_pdf or without_a_file"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:28:23.068Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k several_signatories or second_pending passed",
+      "satisfies": "Um mesmo documento aceita varias solicitacoes para signatarios diferentes sem ordem obrigatoria entre elas",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "several_signatories or second_pending"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:28:31.567Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_requests.py -q -k author_may_request or administrador_and_diretor or colleague_who_did_not or outside_the_obra_cannot_even_see passed",
+      "satisfies": "Somente criador do documento administrador ou diretor podem solicitar assinatura",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_requests.py",
+        "-q",
+        "-k",
+        "author_may_request or administrador_and_diretor or colleague_who_did_not or outside_the_obra_cannot_even_see"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:28:44.922Z"
+    }
+  ]
+}

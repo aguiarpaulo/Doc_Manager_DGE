@@ -1,0 +1,113 @@
+{
+  "node_id": "NODE-029",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k correct_password passed",
+      "satisfies": "Senha correta conclui a assinatura e grava signatario + data-hora + versao assinada",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "correct_password"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:07.038Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k rubric_is_copied or survives_the_owner or keeps_the_old_mark or holds_both passed",
+      "satisfies": "A rubrica e copiada como snapshot no ato da assinatura e a assinatura sobrevive intacta a troca ou exclusao da rubrica de perfil do titular",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "rubric_is_copied or survives_the_owner or keeps_the_old_mark or holds_both"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:19.848Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k wrong_password or open_session passed",
+      "satisfies": "Senha incorreta recusa a assinatura e a solicitacao permanece pendente",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "wrong_password or open_session"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:28.253Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k only_the_named or administrator_cannot_sign or another_document passed",
+      "satisfies": "Somente o signatario indicado consegue assinar aquela solicitacao; outro usuario recebe 403",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "only_the_named or administrator_cannot_sign or another_document"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:41.048Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k signing_twice passed",
+      "satisfies": "Assinar uma solicitacao ja assinada e rejeitado",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "signing_twice"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:48.132Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signing.py -q -k does_not_touch_the_approval passed",
+      "satisfies": "Assinar nao altera o status de aprovacao do documento nem cria nova versao",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signing.py",
+        "-q",
+        "-k",
+        "does_not_touch_the_approval"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:54:54.879Z"
+    }
+  ]
+}

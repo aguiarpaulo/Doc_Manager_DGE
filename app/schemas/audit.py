@@ -11,6 +11,9 @@ class AuditLogRead(BaseModel):
 
     id: uuid.UUID
     actor_id: uuid.UUID | None
+    # Resolved for display. The timeline must keep naming who acted even when the
+    # reader has no way to look a user id up.
+    actor_nome: str | None = None
     action: str
     target_type: str | None
     target_id: uuid.UUID | None

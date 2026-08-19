@@ -1,0 +1,119 @@
+/* Visualizador de PDF e marcação de área. Somente tokens. */
+
+.assinatura {
+  padding: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.assinatura__indisponivel {
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+}
+
+.visualizador-pdf__paginas {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+/* A página e a camada de marcação precisam ocupar exatamente o mesmo espaço:
+   é isso que faz as frações lidas do arrasto corresponderem ao que se vê. */
+.visualizador-pdf__pagina {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.visualizador-pdf__pagina canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.visualizador-pdf__marcacao {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+  /* Sem isto o arrasto seleciona o texto da página em vez de marcar a área. */
+  user-select: none;
+  touch-action: none;
+}
+
+.visualizador-pdf__marcacao:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* A área marcada é percebida pela borda tracejada e pelo preenchimento, não só
+   pela cor: um leitor com daltonismo continua distinguindo. */
+.visualizador-pdf__area {
+  position: absolute;
+  border: 2px dashed var(--color-action);
+  background: var(--color-surface-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.assinar {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+.assinar__sem-pendencia {
+  color: var(--color-text-secondary);
+}
+
+.modal__fundo {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+  /* O fundo escurecido é o único uso de cor fora dos tokens semânticos, e vem
+     de um token próprio para não virar valor literal espalhado. */
+  background: var(--color-overlay);
+  z-index: 10;
+}
+
+.modal {
+  width: min(32rem, 100%);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.modal h2 {
+  margin-top: 0;
+}
+
+.modal__acoes {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.pendencias {
+  padding: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-border);
+  background: var(--color-surface-muted);
+}
+
+.pendencias h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9375rem;
+}
+
+.pendencias__lista {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.pendencias__meta,
+.pendencias__vazio {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}

@@ -62,6 +62,8 @@ export interface Usuario {
   readonly email: string;
   readonly role: Papel;
   readonly is_active: boolean;
+  /** Se ha rubrica registrada — nunca a rubrica em si. */
+  readonly has_signature: boolean;
 }
 
 export interface Obra {
@@ -101,6 +103,8 @@ export interface Etapa {
   readonly id: string;
   readonly action: string;
   readonly actor_id: string | null;
+  /** Resolvido pelo servidor: quem le a linha do tempo nao traduz um UUID. */
+  readonly actor_nome: string | null;
   readonly target_id: string | null;
   readonly detail: string | null;
   readonly created_at: string;
@@ -199,6 +203,8 @@ export function parseUsuario(bruto: unknown): Usuario {
     email: texto(r, "email"),
     role: umDentre(r, "role", PAPEIS),
     is_active: booleano(r, "is_active"),
+    // Tolerante a ausencia: uma API anterior a rubrica simplesmente nao envia.
+    has_signature: typeof r["has_signature"] === "boolean" ? r["has_signature"] : false,
   };
 }
 
@@ -244,6 +250,7 @@ export function parseEtapa(bruto: unknown): Etapa {
     id: texto(r, "id"),
     action: texto(r, "action"),
     actor_id: textoOuNulo(r, "actor_id"),
+    actor_nome: textoOuNulo(r, "actor_nome"),
     target_id: textoOuNulo(r, "target_id"),
     detail: textoOuNulo(r, "detail"),
     created_at: texto(r, "created_at"),
@@ -263,3 +270,122 @@ export const parseUsuarios = lista(parseUsuario);
 export const parseObras = lista(parseObra);
 export const parseDocumentos = lista(parseDocumento);
 export const parseEtapas = lista(parseEtapa);
+
+/** Espelha `SignatureRead` de app/api/signatures.py — metadado, nunca a imagem. */
+export interface Rubrica {
+  readonly id: string;
+  readonly tipo: string;
+  readonly tamanho: number;
+  readonly hash: string;
+  readonly atualizado_em: string;
+}
+
+export function parseRubrica(bruto: unknown): Rubrica {
+  const r = objeto(bruto, "rubrica");
+  return {
+    id: texto(r, "id"),
+    tipo: texto(r, "tipo"),
+    tamanho: numero(r, "tamanho"),
+    hash: texto(r, "hash"),
+    atualizado_em: texto(r, "atualizado_em"),
+  };
+}
+
+export type StatusSolicitacao = "pendente" | "assinada" | "recusada" | "cancelada";
+
+const STATUS_SOLICITACAO: readonly StatusSolicitacao[] = [
+  "pendente",
+  "assinada",
+  "recusada",
+  "cancelada",
+];
+
+/**
+ * Espelha `SignatureRequestRead`. As coordenadas sao fracoes de 0 a 1 com origem
+ * no canto SUPERIOR esquerdo — como foram desenhadas. Nada aqui inverte o eixo.
+ */
+export interface SolicitacaoAssinatura {
+  readonly id: string;
+  readonly document_id: string;
+  readonly document_version_id: string;
+  readonly signatario_id: string;
+  readonly solicitante_id: string;
+  readonly pagina: number;
+  readonly x: number;
+  readonly y: number;
+  readonly largura: number;
+  readonly altura: number;
+  readonly page_width: number;
+  readonly page_height: number;
+  readonly status: StatusSolicitacao;
+  readonly motivo: string | null;
+  readonly criado_em: string;
+  readonly encerrado_em: string | null;
+}
+
+export function parseSolicitacao(bruto: unknown): SolicitacaoAssinatura {
+  const r = objeto(bruto, "solicitacao");
+  return {
+    id: texto(r, "id"),
+    document_id: texto(r, "document_id"),
+    document_version_id: texto(r, "document_version_id"),
+    signatario_id: texto(r, "signatario_id"),
+    solicitante_id: texto(r, "solicitante_id"),
+    pagina: numero(r, "pagina"),
+    x: numero(r, "x"),
+    y: numero(r, "y"),
+    largura: numero(r, "largura"),
+    altura: numero(r, "altura"),
+    page_width: numero(r, "page_width"),
+    page_height: numero(r, "page_height"),
+    status: umDentre(r, "status", STATUS_SOLICITACAO),
+    motivo: textoOuNulo(r, "motivo"),
+    criado_em: texto(r, "criado_em"),
+    encerrado_em: textoOuNulo(r, "encerrado_em"),
+  };
+}
+
+export const parseSolicitacoes = lista(parseSolicitacao);
+
+/** Espelha `AppliedSignatureRead`: a assinatura que aconteceu. */
+export interface AssinaturaAplicada {
+  readonly id: string;
+  readonly signature_request_id: string;
+  readonly document_id: string;
+  readonly document_version_id: string;
+  readonly signatario_id: string;
+  readonly signatario_nome: string;
+  readonly assinado_em: string;
+}
+
+export function parseAssinatura(bruto: unknown): AssinaturaAplicada {
+  const r = objeto(bruto, "assinatura");
+  return {
+    id: texto(r, "id"),
+    signature_request_id: texto(r, "signature_request_id"),
+    document_id: texto(r, "document_id"),
+    document_version_id: texto(r, "document_version_id"),
+    signatario_id: texto(r, "signatario_id"),
+    // Guardado na propria assinatura: renomear o usuario nao muda quem assinou.
+    signatario_nome: texto(r, "signatario_nome"),
+    assinado_em: texto(r, "assinado_em"),
+  };
+}
+
+export const parseAssinaturas = lista(parseAssinatura);
+
+/** Espelha `PendingSignature`: a pendencia mais o nome do documento. */
+export interface PendenciaAssinatura {
+  readonly solicitacao: SolicitacaoAssinatura;
+  readonly documento_nome: string;
+}
+
+export function parsePendencia(bruto: unknown): PendenciaAssinatura {
+  const r = objeto(bruto, "pendencia");
+  return {
+    solicitacao: parseSolicitacao(r["solicitacao"]),
+    documento_nome: texto(r, "documento_nome"),
+  };
+}
+
+export const parsePendencias = lista(parsePendencia);

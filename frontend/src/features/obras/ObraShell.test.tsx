@@ -17,6 +17,7 @@ const USUARIO: Usuario = {
   email: "p@e.com",
   role: "engenheiro",
   is_active: true,
+  has_signature: true,
 };
 
 const OBRA: Obra = { id: "o-1", nome: "Residencial Aurora", descricao: null, is_deleted: false };
@@ -60,6 +61,8 @@ beforeEach(() => {
   vi.mocked(api.refresh).mockResolvedValue({ access_token: "a" });
   vi.mocked(api.me).mockResolvedValue(USUARIO);
   vi.mocked(api.listarObras).mockResolvedValue([OBRA]);
+  // O shell passou a exibir o painel de pendencias (NODE-038).
+  vi.mocked(api.minhasPendencias).mockResolvedValue([]);
   vi.mocked(api.listarDocumentos).mockResolvedValue(TRES_DOCUMENTOS);
   vi.mocked(api.obterDocumento).mockImplementation((id: string) =>
     Promise.resolve(TRES_DOCUMENTOS.find((d) => d.id === id) ?? TRES_DOCUMENTOS[0]!),

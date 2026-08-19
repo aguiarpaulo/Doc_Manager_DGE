@@ -11,7 +11,8 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir \
         "fastapi>=0.115" "uvicorn[standard]>=0.32" "sqlalchemy>=2.0" "alembic>=1.14" \
         "psycopg[binary]>=3.2" "structlog>=24.4" "pydantic-settings>=2.6" "bcrypt>=4.2" \
-        "pyjwt>=2.10" "email-validator>=2.2" "minio>=7.2" "python-multipart>=0.0.12" "pyotp>=2.9"
+        "pyjwt>=2.10" "email-validator>=2.2" "minio>=7.2" "python-multipart>=0.0.12" \
+        "pyotp>=2.9" "pypdf>=5.1" "reportlab>=4.2"
 
 COPY app ./app
 COPY alembic ./alembic

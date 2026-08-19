@@ -28,3 +28,7 @@ class UserRead(BaseModel):
     email: EmailStr
     role: Role
     is_active: bool
+    # Whether a rubric is registered — not the rubric itself. The SPA needs this to
+    # decide whether to demand registration on first access, and it must not cost an
+    # extra request on every mount.
+    has_signature: bool = False

@@ -1,0 +1,95 @@
+{
+  "node_id": "NODE-031",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_new_version_cancels_requests.py -q -k cancels_both_open passed",
+      "satisfies": "Enviar nova versao com 2 pendencias abertas deixa as 2 canceladas",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_new_version_cancels_requests.py",
+        "-q",
+        "-k",
+        "cancels_both_open"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:07:51.061Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_new_version_cancels_requests.py -q -k records_the_reason or every_affected_signatory or without_pending passed",
+      "satisfies": "O cancelamento automatico gera registro com o motivo e notifica cada signatario afetado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_new_version_cancels_requests.py",
+        "-q",
+        "-k",
+        "records_the_reason or every_affected_signatory or without_pending"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:08:00.739Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_new_version_cancels_requests.py -q -k already_applied_survive passed",
+      "satisfies": "Assinaturas ja concluidas continuam consultaveis e permanecem vinculadas a versao em que foram feitas",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_new_version_cancels_requests.py",
+        "-q",
+        "-k",
+        "already_applied_survive"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:08:08.732Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_new_version_cancels_requests.py -q -k no_longer_be_signed or made_again_on_the_new_version passed",
+      "satisfies": "Depois do cancelamento nenhum signatario consegue assinar a solicitacao antiga",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_new_version_cancels_requests.py",
+        "-q",
+        "-k",
+        "no_longer_be_signed or made_again_on_the_new_version"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:08:17.043Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_new_version_cancels_requests.py -q -k reset_behaviour_is_unchanged passed",
+      "satisfies": "O comportamento existente de reset_for_new_version continua valendo e nao e alterado por este no",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_new_version_cancels_requests.py",
+        "-q",
+        "-k",
+        "reset_behaviour_is_unchanged"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:08:23.483Z"
+    }
+  ]
+}

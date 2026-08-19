@@ -11,7 +11,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext.tsx";
 
 export function RotaProtegida() {
-  const { estado } = useAuth();
+  const { estado, temRubrica } = useAuth();
   const location = useLocation();
 
   if (estado === "verificando") {
@@ -27,6 +27,15 @@ export function RotaProtegida() {
   if (estado === "anonimo") {
     const destino = `${location.pathname}${location.search}`;
     return <Navigate to="/entrar" replace state={{ de: destino }} />;
+  }
+
+  const destino = `${location.pathname}${location.search}`;
+
+  // Sem rubrica registrada nao se entra em nenhuma rota protegida: assinar e o
+  // proposito do sistema, e o registro e feito pelo proprio punho do titular.
+  // A propria tela de registro fica fora deste guarda, senao seria um laco.
+  if (!temRubrica && location.pathname !== "/rubrica") {
+    return <Navigate to="/rubrica" replace state={{ de: destino }} />;
   }
 
   return <Outlet />;

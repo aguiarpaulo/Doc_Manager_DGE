@@ -1,0 +1,119 @@
+{
+  "node_id": "NODE-034",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t guarda de rubrica passed",
+      "satisfies": "Usuario sem rubrica e redirecionado a tela de registro em qualquer rota protegida que tente abrir",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "guarda de rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:10:58.381Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t canvas vazio passed",
+      "satisfies": "Canvas vazio nao permite salvar e informa o motivo",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "canvas vazio"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:11:05.060Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t salvar passed",
+      "satisfies": "Apos salvar o usuario segue para o destino que tentava acessar",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "salvar"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:11:12.502Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t nao aparece para quem ja tem rubrica passed",
+      "satisfies": "Usuario que ja possui rubrica nunca ve essa tela",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "nao aparece para quem ja tem rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:11:18.526Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t aviso de coleta passed",
+      "satisfies": "Aviso de coleta explica o que e guardado e para que antes do desenho",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "aviso de coleta"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:11:25.064Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/rubrica -t ponteiros passed",
+      "satisfies": "O canvas funciona com mouse e com ponteiro de toque/caneta",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/rubrica",
+        "-t",
+        "ponteiros"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:11:31.704Z"
+    }
+  ]
+}

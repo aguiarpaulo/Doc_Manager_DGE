@@ -13,10 +13,16 @@ from app.db import Base
 class AuditAction(enum.StrEnum):
     LOGIN = "login"
     UPLOAD = "upload"
+    NEW_VERSION = "new_version"
+    REVIEW = "review"
     DOWNLOAD = "download"
     APPROVE = "approve"
     REJECT = "reject"
     DELETE = "delete"
+    SIGNATURE_REQUESTED = "signature_requested"
+    SIGNED = "signed"
+    SIGNATURE_DECLINED = "signature_declined"
+    SIGNATURE_CANCELLED = "signature_cancelled"
 
 
 class AuditLog(Base):

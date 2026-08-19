@@ -17,6 +17,7 @@ const ADMIN: Usuario = {
   email: "a@e.com",
   role: "administrador",
   is_active: true,
+  has_signature: true,
 };
 
 const ENGENHEIRO: Usuario = {
@@ -25,6 +26,7 @@ const ENGENHEIRO: Usuario = {
   email: "p@e.com",
   role: "engenheiro",
   is_active: true,
+  has_signature: true,
 };
 
 const OBRA: Obra = { id: "o-1", nome: "Aurora", descricao: null, is_deleted: false };

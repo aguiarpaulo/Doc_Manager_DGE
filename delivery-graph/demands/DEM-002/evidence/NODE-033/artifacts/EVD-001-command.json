@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-m",
+    "pytest",
+    "tests/test_pdf_stamp.py",
+    "-q",
+    "-k",
+    "downloading_a_signed or rubric_is_drawn_on_the_marked_page or several_signatures"
+  ],
+  "exit_code": 0,
+  "stdout": "...                                                                      [100%]\r\n============================== warnings summary ===============================\r\n.venv\\Lib\\site-packages\\fastapi\\testclient.py:1\r\n  C:\\Projects\\dge\\Doc_Manager_DGE\\.venv\\Lib\\site-packages\\fastapi\\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\r\n    from starlette.testclient import TestClient as TestClient  # noqa\r\n\r\ntests/test_pdf_stamp.py::test_the_rubric_is_drawn_on_the_marked_page_only\r\ntests/test_pdf_stamp.py::test_several_signatures_on_the_same_page_are_all_drawn\r\ntests/test_pdf_stamp.py::test_downloading_a_signed_document_returns_the_stamped_copy\r\n  C:\\Projects\\dge\\Doc_Manager_DGE\\.venv\\Lib\\site-packages\\pypdf\\_page.py:1311: DeprecationWarning: Calling `PageObject.replace_contents()` for pages not assigned to a writer is deprecated and will be removed in pypdf 7.0.0. Attach the page to the writer first or use `PdfWriter(clone_from=...)` directly. The existing approach has proved being unreliable.\r\n    self.replace_contents(ContentStream(new_content_array, self.pdf))\r\n\r\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\r\n",
+  "stderr": "",
+  "created_at": "2026-08-19T13:58:05.122Z",
+  "artifacts": []
+}

@@ -1,0 +1,91 @@
+# Stack de teste ponta a ponta.
+#
+# Sobe os mesmos serviços reais da produção — PostgreSQL, MinIO, a API e o Caddy
+# servindo a SPA — mais um Mailpit no lugar do SMTP. Nada aqui é simulado: é essa
+# a diferença entre este arquivo e a suíte de componentes, e é o que a lição do
+# NODE-015 exige de uma evidência de smoke.
+#
+#   docker compose -f docker-compose.test.yml -p gede2e up -d --build
+#   npx playwright test        (em frontend/)
+#   docker compose -f docker-compose.test.yml -p gede2e down -v
+#
+# As credenciais abaixo são de teste e vivem só neste arquivo: o stack sobe
+# isolado, em portas próprias, e é destruído com os volumes ao final.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ged
+      POSTGRES_PASSWORD: senha-de-teste-e2e
+      POSTGRES_DB: ged
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ged"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ged-minio-e2e
+      MINIO_ROOT_PASSWORD: senha-de-teste-minio-e2e
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local || curl -f http://localhost:9000/minio/health/live"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # SMTP de teste: aceita a mensagem e a expõe por uma API HTTP, que é como o
+  # E2E extrai o link de assinatura sem depender de caixa de entrada real.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8027:8025" # interface e API de inspeção
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+
+  api:
+    build: .
+    environment:
+      GED_ENVIRONMENT: test
+      GED_DATABASE_URL: postgresql+psycopg://ged:senha-de-teste-e2e@postgres:5432/ged
+      GED_JWT_SECRET: segredo-de-teste-e2e-com-mais-de-32-caracteres
+      GED_MINIO_ENDPOINT: minio:9000
+      GED_MINIO_ACCESS_KEY: ged-minio-e2e
+      GED_MINIO_SECRET_KEY: senha-de-teste-minio-e2e
+      GED_MINIO_BUCKET: documents
+      GED_MINIO_SECURE: "false"
+      # Relay sem credencial, como o do Google Workspace por IP: o SMTPEmailSender
+      # só chama login() quando há usuário E senha.
+      GED_SMTP_HOST: mailpit
+      GED_SMTP_PORT: "1025"
+      GED_SMTP_STARTTLS: "false"
+      GED_SMTP_FROM: ged@exemplo.com
+      GED_APP_URL_BASE: http://localhost:8080
+      GED_BOOTSTRAP_ADMIN_USERNAME: admin
+      GED_BOOTSTRAP_ADMIN_EMAIL: admin@exemplo.com
+      GED_BOOTSTRAP_ADMIN_PASSWORD: senha-de-teste-admin-e2e
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        VITE_BASE_PATH: /
+        VITE_API_BASE_URL: /api
+    environment:
+      # HTTP puro na porta 8080: o E2E não deve depender de aceitar um
+      # certificado autoassinado, e o TLS já é verificado no smoke do NODE-024.
+      CADDY_DOMAIN: ":80"
+    ports:
+      - "8080:80"
+    depends_on:
+      - api

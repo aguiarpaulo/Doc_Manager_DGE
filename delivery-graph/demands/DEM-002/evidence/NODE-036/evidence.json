@@ -1,0 +1,119 @@
+{
+  "node_id": "NODE-036",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t senha correta passed",
+      "satisfies": "Senha correta conclui a assinatura e a rubrica aparece na area marcada com nome e horario",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "senha correta"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:01.818Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t senha errada passed",
+      "satisfies": "Senha incorreta mantem a pendencia e mostra erro acionavel",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "senha errada"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:08.598Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t desabilita o confirmar or senha vazia passed",
+      "satisfies": "O botao de confirmar fica desabilitado durante o envio impedindo assinatura duplicada",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "desabilita o confirmar or senha vazia"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:14.775Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t link do e-mail passed",
+      "satisfies": "Abrir o link do e-mail sem sessao passa pelo login e retorna a tela de assinatura do documento correto",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "link do e-mail"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:21.736Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t modal de confirmacao passed",
+      "satisfies": "O modal de confirmacao move o foco para dentro prende Tab e restaura o foco ao fechar",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "modal de confirmacao"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:29.636Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t a senha passed",
+      "satisfies": "A senha nunca e registrada em log nem persistida no cliente",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "a senha"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:46:37.793Z"
+    }
+  ]
+}

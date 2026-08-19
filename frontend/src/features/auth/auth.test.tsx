@@ -20,6 +20,7 @@ const ENGENHEIRO: Usuario = {
   email: "paulo@exemplo.com",
   role: "engenheiro",
   is_active: true,
+  has_signature: true,
 };
 
 const ADMIN: Usuario = { ...ENGENHEIRO, id: "u-2", username: "chefe", role: "administrador" };

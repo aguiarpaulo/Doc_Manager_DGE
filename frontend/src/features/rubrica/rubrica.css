@@ -1,0 +1,39 @@
+/* Tela de registro da rubrica. Somente tokens. */
+
+.rubrica {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+.rubrica__aviso {
+  padding: var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--color-surface-muted);
+  border: var(--border-width) solid var(--color-border);
+}
+
+.rubrica__aviso h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.rubrica__aviso p {
+  color: var(--color-text-secondary);
+  max-width: 60ch;
+}
+
+.canvas-rubrica {
+  display: block;
+  max-width: 100%;
+  background: var(--color-surface);
+  /* Sem arredondamento, a borda é o que delimita a área de desenho. */
+  border: var(--border-width) solid var(--color-border);
+  cursor: crosshair;
+}
+
+.rubrica__acoes {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

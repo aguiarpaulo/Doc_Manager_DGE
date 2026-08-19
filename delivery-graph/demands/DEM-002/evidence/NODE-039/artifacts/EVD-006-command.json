@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "src/features/assinatura/acessibilidade.test.tsx",
+    "-t",
+    "cor e movimento"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed (1)\n      Tests  3 passed | 17 skipped (20)\n   Start at  12:34:54\n   Duration  5.01s (transform 557ms, setup 685ms, import 1.21s, tests 14ms, environment 2.64s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T15:34:59.216Z",
+  "artifacts": []
+}

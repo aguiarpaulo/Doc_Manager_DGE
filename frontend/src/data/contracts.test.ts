@@ -16,7 +16,16 @@ describe("parseUsuario", () => {
   };
 
   it("aceita um payload dentro do contrato", () => {
-    expect(parseUsuario(valido)).toEqual(valido);
+    expect(parseUsuario({ ...valido, has_signature: true })).toEqual({
+      ...valido,
+      has_signature: true,
+    });
+  });
+
+  it("assume que nao ha rubrica quando a API nao informa", () => {
+    // Tolerancia deliberada: uma API anterior a rubrica simplesmente omite o
+    // campo, e omitir nao pode significar "tem rubrica".
+    expect(parseUsuario(valido).has_signature).toBe(false);
   });
 
   it("rejeita papel fora do conjunto conhecido", () => {

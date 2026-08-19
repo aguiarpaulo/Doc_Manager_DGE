@@ -1,0 +1,22 @@
+# pdfjs-dist fica fora do chunk inicial
+Data: 2026-08-19T14:25:55Z
+
+## Saida do build de producao
+  dist/index.html                              0.39 kB │ gzip:   0.26 kB
+  dist/assets/pdf.worker.min-CHFwMXne.mjs  1,262.39 kB
+  dist/assets/index-Dmomo_1e.css               6.20 kB │ gzip:   1.67 kB
+  dist/assets/index-DELLJaIj.js              269.06 kB │ gzip:  84.34 kB
+  dist/assets/pdf-B0WrKcVS.js                427.30 kB │ gzip: 127.39 kB
+
+## Leitura
+  index-*.js e o chunk inicial: 84 kB gzip.
+  pdf-*.js (127 kB gzip) e pdf.worker.min-*.mjs sao chunks separados,
+  baixados so quando alguem abre um PDF para marcar area de assinatura.
+
+  Antes de ligar o visualizador, o chunk inicial tinha 82.35 kB gzip.
+  Depois, 84.34 kB: crescimento de ~2 kB, referente ao codigo do
+  componente. A dependencia de 127 kB NAO entrou nele.
+
+## Como isso e garantido no codigo
+  89-        // Import dinâmico: fora do chunk inicial.
+  90:        const pdfjs = await import("pdfjs-dist");

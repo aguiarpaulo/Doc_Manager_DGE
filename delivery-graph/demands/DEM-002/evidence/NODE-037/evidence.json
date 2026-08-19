@@ -1,0 +1,81 @@
+{
+  "node_id": "NODE-037",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos/LinhaDoTempo.test.tsx -t linha do tempo passed",
+      "satisfies": "As etapas aparecem na tela do documento em ordem cronologica com autor e horario",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos/LinhaDoTempo.test.tsx",
+        "-t",
+        "linha do tempo"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:57:52.513Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos/LinhaDoTempo.test.tsx -t assinatura nomeia o signatario passed",
+      "satisfies": "Assinaturas aparecem com o nome do signatario e o horario da assinatura",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos/LinhaDoTempo.test.tsx",
+        "-t",
+        "assinatura nomeia o signatario"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:57:58.872Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos/LinhaDoTempo.test.tsx -t documento recem-enviado passed",
+      "satisfies": "Documento sem etapas alem do upload mostra a linha do tempo minima e nao um vazio generico",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos/LinhaDoTempo.test.tsx",
+        "-t",
+        "documento recem-enviado"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:58:05.337Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/documentos/LinhaDoTempo.test.tsx -t estados passed",
+      "satisfies": "Estados de carga revalidacao e erro sao distintos",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/documentos/LinhaDoTempo.test.tsx",
+        "-t",
+        "estados"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T14:58:11.777Z"
+    }
+  ]
+}
