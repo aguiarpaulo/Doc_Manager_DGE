@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+    "-t",
+    "link do e-mail"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed (1)\n      Tests  1 passed | 13 skipped (14)\n   Start at  11:46:16\n   Duration  5.31s (transform 368ms, setup 580ms, import 683ms, tests 822ms, environment 2.79s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T14:46:21.732Z",
+  "artifacts": []
+}

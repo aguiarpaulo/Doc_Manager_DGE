@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
     reset_url_base: str = ""  # e.g. https://ged.example.com/reset-password
 
+    # Single public base for every link the API puts in an e-mail. The SPA and the
+    # API share one origin, so one value covers both the reset screen and the
+    # signing screen; keeping two bases is how they drift apart.
+    app_url_base: str = ""  # e.g. https://ged.example.com
+
     bootstrap_admin_username: str | None = None
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None

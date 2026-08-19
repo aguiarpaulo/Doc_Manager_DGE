@@ -1,0 +1,127 @@
+{
+  "node_id": "NODE-026",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q passed",
+      "satisfies": "Rubrica gravada como PNG sob prefixo rubricas/ no bucket existente com metadado no Postgres",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:02:28.091Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k own or someone or each_user passed",
+      "satisfies": "Apenas o titular grava e le a propria rubrica; administrador recebe 403 ao tentar gravar ou ler rubrica alheia",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "own or someone or each_user"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:02:38.361Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k addresses_a_rubric_by_user_id or never_returns_the_image passed",
+      "satisfies": "Nenhum endpoint devolve rubrica por user_id de terceiro e nenhuma URL presigned e exposta",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "addresses_a_rubric_by_user_id or never_returns_the_image"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:02:44.647Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k delete passed",
+      "satisfies": "delete_object adicionado as tres implementacoes de ObjectStorage (protocolo InMemory e MinIO) com teste em cada",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "delete"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:02:50.159Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k deletes_own_rubric passed",
+      "satisfies": "Titular consegue apagar a propria rubrica de perfil e o objeto some do armazenamento",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "deletes_own_rubric"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:02:55.637Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k deactivating passed",
+      "satisfies": "Desativar usuario nao apaga a rubrica porque desativacao preserva o cadastro para reativacao",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "deactivating"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:03:02.475Z"
+    },
+    {
+      "id": "EVD-007",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_storage_minio_live.py -q passed",
+      "satisfies": "delete_object adicionado as tres implementacoes de ObjectStorage (protocolo InMemory e MinIO) com teste em cada",
+      "artifact": "artifacts/EVD-007-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_storage_minio_live.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:13:21.592Z"
+    }
+  ]
+}

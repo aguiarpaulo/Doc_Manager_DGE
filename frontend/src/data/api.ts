@@ -6,19 +6,29 @@
  */
 
 import {
+  parseAssinatura,
+  parseAssinaturas,
   parseDocumento,
   parseDocumentos,
   parseEtapas,
   parseObra,
   parseObras,
+  parsePendencias,
+  parseRubrica,
+  parseSolicitacao,
+  parseSolicitacoes,
   parseTokens,
   parseUsuario,
   parseUsuarios,
   parseVersaoDocumento,
+  type AssinaturaAplicada,
   type Categoria,
   type Documento,
   type Etapa,
   type Obra,
+  type PendenciaAssinatura,
+  type Rubrica,
+  type SolicitacaoAssinatura,
   type Tokens,
   type Usuario,
   type VersaoDocumento,
@@ -231,4 +241,148 @@ export function historicoDocumento(
     parseEtapas,
     signal ? { signal } : {},
   );
+}
+
+// --- rubrica -----------------------------------------------------------------
+
+/**
+ * Registra ou substitui a rubrica do proprio usuario.
+ *
+ * Nenhuma destas funcoes recebe um id de usuario: a API expoe apenas /me/signature,
+ * e ler ou gravar a rubrica de outra pessoa nao e proibido por uma checagem — e
+ * inexprimivel, porque nao existe caminho que descreva isso.
+ */
+export function registrarRubrica(png: Blob): Promise<Rubrica> {
+  const formData = new FormData();
+  formData.append("file", png, "rubrica.png");
+  return request("/me/signature", parseRubrica, { method: "PUT", formData });
+}
+
+export function baixarRubrica(): Promise<{ blob: Blob; contentType: string }> {
+  return requestBlob("/me/signature");
+}
+
+export function apagarRubrica(): Promise<void> {
+  return request("/me/signature", semConteudo, { method: "DELETE" });
+}
+
+// --- assinatura ---------------------------------------------------------------
+
+/**
+ * Marca a area onde alguem deve assinar.
+ *
+ * As coordenadas viajam como fracoes de 0 a 1 com origem no canto SUPERIOR
+ * esquerdo, exatamente como foram desenhadas. A inversao para o sistema do PDF
+ * acontece uma unica vez, no servidor, na hora do carimbo.
+ */
+export function solicitarAssinatura(
+  documentoId: string,
+  dados: {
+    signatarioId: string;
+    pagina: number;
+    x: number;
+    y: number;
+    largura: number;
+    altura: number;
+    pageWidth: number;
+    pageHeight: number;
+  },
+): Promise<SolicitacaoAssinatura> {
+  return request(
+    `/documents/${segmento(documentoId)}/signature-requests`,
+    parseSolicitacao,
+    {
+      method: "POST",
+      body: {
+        signatario_id: dados.signatarioId,
+        pagina: dados.pagina,
+        x: dados.x,
+        y: dados.y,
+        largura: dados.largura,
+        altura: dados.altura,
+        page_width: dados.pageWidth,
+        page_height: dados.pageHeight,
+      },
+    },
+  );
+}
+
+export function listarSolicitacoes(
+  documentoId: string,
+  signal?: AbortSignal,
+): Promise<SolicitacaoAssinatura[]> {
+  return request(
+    `/documents/${segmento(documentoId)}/signature-requests`,
+    parseSolicitacoes,
+    signal ? { signal } : {},
+  );
+}
+
+/**
+ * Quem pode assinar um documento desta obra.
+ *
+ * Existe porque `GET /users` e admin-only: o autor de um documento pode ser um
+ * engenheiro, e ele precisa escolher a quem pedir assinatura.
+ */
+export function listarMembrosDaObra(
+  obraId: string,
+  signal?: AbortSignal,
+): Promise<Usuario[]> {
+  return request(
+    `/obras/${segmento(obraId)}/users`,
+    parseUsuarios,
+    signal ? { signal } : {},
+  );
+}
+
+/**
+ * Assina, confirmando com a propria senha.
+ *
+ * A senha vai no corpo e nao e guardada em lugar nenhum do cliente: nem em
+ * estado persistido, nem em log. O que a torna nao-repudiavel e justamente ela
+ * ser digitada no ato.
+ */
+export function assinarSolicitacao(
+  documentoId: string,
+  solicitacaoId: string,
+  password: string,
+): Promise<AssinaturaAplicada> {
+  return request(
+    `/documents/${segmento(documentoId)}/signature-requests/${segmento(solicitacaoId)}/sign`,
+    parseAssinatura,
+    { method: "POST", body: { password } },
+  );
+}
+
+export function recusarSolicitacao(
+  documentoId: string,
+  solicitacaoId: string,
+  motivo: string,
+): Promise<SolicitacaoAssinatura> {
+  return request(
+    `/documents/${segmento(documentoId)}/signature-requests/${segmento(solicitacaoId)}/decline`,
+    parseSolicitacao,
+    { method: "POST", body: { motivo } },
+  );
+}
+
+export function listarAssinaturas(
+  documentoId: string,
+  signal?: AbortSignal,
+): Promise<AssinaturaAplicada[]> {
+  return request(
+    `/documents/${segmento(documentoId)}/signatures`,
+    parseAssinaturas,
+    signal ? { signal } : {},
+  );
+}
+
+/**
+ * O que espera a assinatura de quem chama.
+ *
+ * O caminho nao recebe id de usuario: ler a fila de outra pessoa nao e proibido
+ * por uma checagem, e inexprimivel.
+ */
+export function minhasPendencias(signal?: AbortSignal): Promise<PendenciaAssinatura[]> {
+  return request("/me/signature-requests", parsePendencias, signal ? { signal } : {});
 }

@@ -1,0 +1,18 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "src/features/documentos/LinhaDoTempo.test.tsx",
+    "-t",
+    "assinatura nomeia o signatario"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed (1)\n      Tests  1 passed | 11 skipped (12)\n   Start at  11:57:54\n   Duration  3.97s (transform 250ms, setup 542ms, import 405ms, tests 242ms, environment 2.30s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T14:57:58.866Z",
+  "artifacts": []
+}

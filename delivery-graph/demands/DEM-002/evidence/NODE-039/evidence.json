@@ -1,0 +1,119 @@
+{
+  "node_id": "NODE-039",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/AssinarDocumentoPage.test.tsx -t modal de confirmacao passed",
+      "satisfies": "Abrir um modal move o foco para dentro dele e fecha-lo restaura o foco no elemento anterior",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/AssinarDocumentoPage.test.tsx",
+        "-t",
+        "modal de confirmacao"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:32:51.291Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/acessibilidade.test.tsx -t jornada por teclado passed",
+      "satisfies": "A jornada completa de assinatura e concluida usando somente o teclado",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/acessibilidade.test.tsx",
+        "-t",
+        "jornada por teclado"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:34:28.212Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/acessibilidade.test.tsx -t controles por icone passed",
+      "satisfies": "Todo controle representado apenas por icone tem nome acessivel",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/acessibilidade.test.tsx",
+        "-t",
+        "controles por icone"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:34:37.797Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/acessibilidade.test.tsx -t auditoria com axe passed",
+      "satisfies": "Auditoria automatizada de acessibilidade nao acusa violacao de contraste nas telas principais",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/acessibilidade.test.tsx",
+        "-t",
+        "auditoria com axe"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:34:45.418Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/acessibilidade.test.tsx -t contraste dos tokens passed",
+      "satisfies": "Auditoria automatizada de acessibilidade nao acusa violacao de contraste nas telas principais",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/acessibilidade.test.tsx",
+        "-t",
+        "contraste dos tokens"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:34:51.914Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend src/features/assinatura/acessibilidade.test.tsx -t cor e movimento passed",
+      "satisfies": "Estados nao dependem somente de cor e prefers-reduced-motion e respeitado",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "src/features/assinatura/acessibilidade.test.tsx",
+        "-t",
+        "cor e movimento"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T15:34:59.220Z"
+    }
+  ]
+}

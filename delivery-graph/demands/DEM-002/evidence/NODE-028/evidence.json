@@ -1,0 +1,104 @@
+{
+  "node_id": "NODE-028",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_request_email.py -q -k exactly_one_email or no_email_is_sent passed",
+      "satisfies": "Criar solicitacao envia exatamente um e-mail ao endereco do signatario",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_request_email.py",
+        "-q",
+        "-k",
+        "exactly_one_email or no_email_is_sent"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:45:04.246Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "manual",
+      "summary": "Verificado contra um SMTP real (Mailpit), nao so com a fronteira simulada: a mensagem chegou com From ged@exemplo.com, assunto 'Assinatura solicitada: Contrato principal' e corpo contendo o documento, a obra, o solicitante e o link /documentos/{id}/assinar derivado de GED_APP_URL_BASE. O sender foi construido sem usuario e sem senha, reproduzindo o relay por IP.",
+      "satisfies": "O corpo traz nome do documento + obra + quem solicitou + link derivado de GED_APP_URL_BASE apontando para a rota de assinatura da SPA",
+      "result": "pass",
+      "artifact": "artifacts/EVD-002-PROOF-email-smtp-real.txt",
+      "created_at": "2026-08-19T12:45:05.349Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_request_email.py -q -k smtp_failure or smtp_errors passed",
+      "satisfies": "Falha de SMTP nao impede a criacao da solicitacao e e registrada em log",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_request_email.py",
+        "-q",
+        "-k",
+        "smtp_failure or smtp_errors"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:45:15.676Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_request_email.py -q -k startup passed",
+      "satisfies": "A aplicacao recusa subir quando GED_SMTP_HOST esta definido e GED_SMTP_FROM esta vazio (com relay por IP o fallback para smtp_user produziria um cabecalho From em branco)",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_request_email.py",
+        "-q",
+        "-k",
+        "startup"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:45:20.812Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_request_email.py -q -k console_sender or without_smtp_host or smtp_sender_is_selected passed",
+      "satisfies": "Sem GED_SMTP_HOST o ConsoleEmailSender continua sendo o caminho de desenvolvimento",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_request_email.py",
+        "-q",
+        "-k",
+        "console_sender or without_smtp_host or smtp_sender_is_selected"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:45:25.987Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_request_email.py -q -k in_memory_sender passed",
+      "satisfies": "InMemoryEmailSender captura a mensagem em teste sem servico externo",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_request_email.py",
+        "-q",
+        "-k",
+        "in_memory_sender"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T12:45:30.799Z"
+    }
+  ]
+}

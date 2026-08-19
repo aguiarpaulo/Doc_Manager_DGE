@@ -157,3 +157,31 @@ def make_document(db_session: Session):
         return document
 
     return _make
+
+
+def make_pdf(paginas: int = 1, texto: str = "documento", tamanhos=None) -> bytes:
+    """Um PDF real, porque pypdf precisa conseguir abrir o arquivo.
+
+    `tamanhos` recebe uma lista de (largura, altura) em pontos para produzir um
+    arquivo que mistura tamanhos de página — o caso que a conversão de coordenadas
+    precisa tratar.
+    """
+    import io
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as rl_canvas
+
+    tamanhos = tamanhos or [A4] * paginas
+    buffer = io.BytesIO()
+    c = rl_canvas.Canvas(buffer, pagesize=tamanhos[0])
+    for indice, tamanho in enumerate(tamanhos, start=1):
+        c.setPageSize(tamanho)
+        c.drawString(72, tamanho[1] - 72, f"{texto} - pagina {indice}")
+        c.showPage()
+    c.save()
+    return buffer.getvalue()
+
+
+@pytest.fixture
+def pdf_factory():
+    return make_pdf

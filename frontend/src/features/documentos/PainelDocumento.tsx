@@ -9,9 +9,12 @@
 import { useCallback } from "react";
 
 import * as api from "../../data/api.ts";
-import type { Documento } from "../../data/contracts.ts";
+import type { Documento, Usuario } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
+import { useAuth } from "../auth/AuthContext.tsx";
+import { SolicitarAssinatura } from "../assinatura/SolicitarAssinatura.tsx";
 import { AcoesDocumento } from "./AcoesDocumento.tsx";
+import { LinhaDoTempo } from "./LinhaDoTempo.tsx";
 import { VisualizadorConteudo } from "./VisualizadorConteudo.tsx";
 
 interface ConteudoBaixado {
@@ -20,6 +23,7 @@ interface ConteudoBaixado {
 }
 
 export function PainelDocumento({ documentoId }: { documentoId: string }) {
+  const { usuario, ehAdministrador } = useAuth();
   const buscarDocumento = useCallback(
     (signal: AbortSignal) => api.obterDocumento(documentoId, signal),
     [documentoId],
@@ -35,6 +39,15 @@ export function PainelDocumento({ documentoId }: { documentoId: string }) {
   }, [documentoId, versao]);
 
   const conteudo = useApiData<ConteudoBaixado>(buscarConteudo, [documentoId, versao]);
+
+  const obraId =
+    documento.estado.status === "success" ? documento.estado.data.obra_id : "";
+  const buscarMembros = useCallback(
+    (signal: AbortSignal) =>
+      obraId === "" ? Promise.resolve([]) : api.listarMembrosDaObra(obraId, signal),
+    [obraId],
+  );
+  const membros = useApiData<Usuario[]>(buscarMembros, [obraId]);
 
   if (documento.estado.status === "loading") {
     return (
@@ -83,12 +96,33 @@ export function PainelDocumento({ documentoId }: { documentoId: string }) {
         )}
 
         {conteudo.estado.status === "success" && (
-          <VisualizadorConteudo
-            nome={atual.nome}
-            blob={conteudo.estado.data.blob}
-            contentType={conteudo.estado.data.contentType}
-          />
+          <>
+            <VisualizadorConteudo
+              nome={atual.nome}
+              blob={conteudo.estado.data.blob}
+              contentType={conteudo.estado.data.contentType}
+            />
+
+            {/* Solicitar assinatura e do autor, do administrador ou do diretor —
+                a regra e do servidor; aqui so evitamos oferecer o que seria
+                recusado. */}
+            {(ehAdministrador ||
+              usuario?.role === "diretor" ||
+              usuario?.id === atual.criado_por) && (
+              <SolicitarAssinatura
+                documentoId={atual.id}
+                contentType={conteudo.estado.data.contentType}
+                arquivo={conteudo.estado.data.blob}
+                candidatos={membros.estado.status === "success" ? membros.estado.data : []}
+                aoSolicitar={documento.recarregar}
+              />
+            )}
+          </>
         )}
+
+        {/* Sempre visível: as etapas contam a história do documento
+            independentemente de o conteúdo ter carregado. */}
+        <LinhaDoTempo documentoId={atual.id} />
       </div>
     </>
   );

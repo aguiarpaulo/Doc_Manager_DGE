@@ -2,6 +2,10 @@
 
 The API depends on the `ObjectStorage` protocol so tests can swap in `InMemoryStorage`
 without a running MinIO. Production wiring lives in `get_storage`.
+
+There is deliberately no presigned-URL helper here. Every object is served through an
+endpoint that checks who is asking; handing out a URL that authenticates by itself
+would move that decision out of the API and into whoever forwards the link.
 """
 
 import io
@@ -14,6 +18,8 @@ class ObjectStorage(Protocol):
     def put_object(self, key: str, data: bytes, content_type: str) -> None: ...
 
     def get_object(self, key: str) -> bytes: ...
+
+    def delete_object(self, key: str) -> None: ...
 
     def ping(self) -> None: ...
 
@@ -29,6 +35,11 @@ class InMemoryStorage:
 
     def get_object(self, key: str) -> bytes:
         return self.objects[key]
+
+    def delete_object(self, key: str) -> None:
+        # Idempotent: removing something already gone is not an error, so a retry
+        # after a partial failure does not blow up.
+        self.objects.pop(key, None)
 
     def ping(self) -> None:
         return None
@@ -61,6 +72,9 @@ class MinioStorage:
         finally:
             response.close()
             response.release_conn()
+
+    def delete_object(self, key: str) -> None:
+        self._client.remove_object(self._bucket, key)
 
     def ping(self) -> None:
         self._client.bucket_exists(self._bucket)

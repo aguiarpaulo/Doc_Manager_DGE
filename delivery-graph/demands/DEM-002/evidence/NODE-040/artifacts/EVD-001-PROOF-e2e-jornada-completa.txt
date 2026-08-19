@@ -1,0 +1,24 @@
+# E2E da jornada de assinatura contra o stack real
+Data: 2026-08-19T16:28:19Z
+
+## Servicos (docker-compose.test.yml, projeto gede2e)
+api  running
+mailpit  running
+minio  running
+postgres  running
+web  running
+
+  GET /api/health -> {"status":"ok","checks":{"database":"ok","storage":"ok"}}
+  Mailpit         -> HTTP 200
+
+## Nada simulado
+  Chrome real (Playwright), PostgreSQL real com as migracoes aplicadas,
+  MinIO real, SMTP real (Mailpit). Nenhum vi.mock, nenhum stub de canvas,
+  nenhum pdfjs simulado.
+    ok 1 [chromium] › e2e\jornada-de-assinatura.spec.ts:142:3 › jornada de assinatura ponta a ponta › preparação: obra, signatário e documento existem no stack real (2.1s)
+    ok 2 [chromium] › e2e\jornada-de-assinatura.spec.ts:205:3 › jornada de assinatura ponta a ponta › o signatário registra a rubrica desenhando no canvas (3.2s)
+    ok 3 [chromium] › e2e\jornada-de-assinatura.spec.ts:227:3 › jornada de assinatura ponta a ponta › o autor marca a área no PDF renderizado e solicita a assinatura (3.3s)
+    ok 4 [chromium] › e2e\jornada-de-assinatura.spec.ts:264:3 › jornada de assinatura ponta a ponta › o e-mail chega no Mailpit e o link leva ao documento certo (1.6s)
+    ok 5 [chromium] › e2e\jornada-de-assinatura.spec.ts:286:3 › jornada de assinatura ponta a ponta › assina confirmando a senha e a etapa aparece na linha do tempo (4.9s)
+    ok 6 [chromium] › e2e\jornada-de-assinatura.spec.ts:316:3 › jornada de assinatura ponta a ponta › o download traz o PDF carimbado e o objeto original segue intacto (726ms)
+    6 passed (17.7s)

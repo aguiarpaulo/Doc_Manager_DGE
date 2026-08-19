@@ -18,6 +18,8 @@ import { LoginPage } from "./features/auth/LoginPage.tsx";
 import { RotaProtegida } from "./features/auth/RotaProtegida.tsx";
 import { EscolherObra } from "./features/obras/EscolherObra.tsx";
 import { ObraShell } from "./features/obras/ObraShell.tsx";
+import { AssinarDocumentoPage } from "./features/assinatura/AssinarDocumentoPage.tsx";
+import { RegistroRubricaPage } from "./features/rubrica/RegistroRubricaPage.tsx";
 
 function NaoEncontrado() {
   return (
@@ -34,12 +36,17 @@ export function Rotas() {
       <Route path="/entrar" element={<LoginPage />} />
       <Route path="/esqueci-minha-senha" element={<ForgotPasswordPage />} />
       <Route element={<RotaProtegida />}>
+        {/* Fora do guarda de rubrica por construcao: e para ca que ele redireciona. */}
+        <Route path="/rubrica" element={<RegistroRubricaPage />} />
         <Route path="/" element={<EscolherObra />} />
         {/* A obra e o documento vivem na URL: a tela e compartilhavel e o F5
             restaura exatamente o que estava aberto. */}
         <Route path="/obras/:obraId" element={<ObraShell />} />
         <Route path="/obras/:obraId/documentos/:documentoId" element={<ObraShell />} />
         <Route path="/administracao" element={<AdminPage />} />
+        {/* Destino do link enviado por e-mail: o mesmo caminho que
+            `signature_link` monta no servidor. */}
+        <Route path="/documentos/:documentoId/assinar" element={<AssinarDocumentoPage />} />
       </Route>
       <Route path="/404" element={<NaoEncontrado />} />
       <Route path="*" element={<Navigate to="/404" replace />} />

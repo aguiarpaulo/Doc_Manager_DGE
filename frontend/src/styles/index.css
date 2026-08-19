@@ -22,6 +22,8 @@
   --color-action-text: #ffffff;
   --color-action-hover: #0f3559;
   --color-focus: #15497b;
+  /* Fundo do modal: escurece a pagina sem depender de opacidade no conteudo. */
+  --color-overlay: rgba(28, 31, 35, 0.55);
 
   /* Cores de status ajustadas para os quatro estados do documento continuarem
      distinguiveis impressos em escala de cinza ou vistos por alguem com
@@ -88,6 +90,7 @@
   --color-action-text: #0d1117;
   --color-action-hover: #7cbcf4;
   --color-focus: #5aa9f0;
+  --color-overlay: rgba(0, 0, 0, 0.65);
 
   --color-danger: #f08a86;
   --color-danger-text: #0d1117;

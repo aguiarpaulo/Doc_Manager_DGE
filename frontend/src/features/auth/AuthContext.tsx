@@ -45,6 +45,10 @@ export interface AuthContextValue {
   ) => Promise<void>;
   readonly sair: () => void;
   readonly ehAdministrador: boolean;
+  /** Rele o usuario de /auth/me. Necessario depois de registrar a rubrica, porque
+   *  o guarda de rota decide por `has_signature`. */
+  readonly recarregarUsuario: () => Promise<void>;
+  readonly temRubrica: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -111,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const recarregarUsuario = useCallback(async () => {
+    setUsuario(await api.me());
+  }, []);
+
   const sair = useCallback(() => {
     limparSessao();
     setUsuario(null);
@@ -124,8 +132,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       entrar,
       sair,
       ehAdministrador: usuario?.role === "administrador",
+      recarregarUsuario,
+      temRubrica: usuario?.has_signature === true,
     }),
-    [estado, usuario, entrar, sair],
+    [estado, usuario, entrar, sair, recarregarUsuario],
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

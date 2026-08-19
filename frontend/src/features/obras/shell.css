@@ -175,3 +175,37 @@
     overflow: visible;
   }
 }
+
+/* Linha do tempo do documento, abaixo do conteúdo renderizado. */
+
+.linha-do-tempo {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width) solid var(--color-border);
+}
+
+.linha-do-tempo h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9375rem;
+}
+
+.linha-do-tempo__lista {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+.linha-do-tempo__lista li {
+  margin-bottom: var(--space-1);
+}
+
+.linha-do-tempo__autor,
+.linha-do-tempo__detalhe {
+  color: var(--color-text-secondary);
+}
+
+/* Indicador discreto: revalidar não é o mesmo que carregar pela primeira vez. */
+.linha-do-tempo__atualizando {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}

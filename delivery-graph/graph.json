@@ -5,8 +5,8 @@
     "status": "draft",
     "source": "local",
     "created_at": "2026-07-03T17:52:13.967Z",
-    "updated_at": "2026-08-16T00:10:32.459Z",
-    "rev": 162
+    "updated_at": "2026-08-19T16:29:13.583Z",
+    "rev": 222
   },
   "demands": [
     {
@@ -1394,7 +1394,7 @@
         "REQ-019"
       ],
       "depends_on": [],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Rubrica gravada como PNG sob prefixo rubricas/ no bucket existente com metadado no Postgres",
@@ -1422,7 +1422,7 @@
       "depends_on": [
         "NODE-026"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Criar solicitacao vincula a versao atual do documento e grava pagina + coordenadas normalizadas de 0 a 1 com origem no canto superior esquerdo",
@@ -1451,7 +1451,7 @@
         "NODE-027",
         "NODE-021"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Criar solicitacao envia exatamente um e-mail ao endereco do signatario",
@@ -1479,7 +1479,7 @@
       "depends_on": [
         "NODE-027"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Senha correta conclui a assinatura e grava signatario + data-hora + versao assinada",
@@ -1507,7 +1507,7 @@
       "depends_on": [
         "NODE-029"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Recusar exige justificativa nao vazia",
@@ -1534,7 +1534,7 @@
       "depends_on": [
         "NODE-029"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Enviar nova versao com 2 pendencias abertas deixa as 2 canceladas",
@@ -1562,7 +1562,7 @@
         "NODE-030",
         "NODE-031"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "As nove acoes (upload nova versao envio para analise aprovacao rejeicao solicitacao assinatura recusa cancelamento) geram cada uma exatamente um registro com autor e horario",
@@ -1589,7 +1589,7 @@
       "depends_on": [
         "NODE-029"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Baixar documento assinado retorna PDF com a rubrica na pagina e coordenadas registradas",
@@ -1619,7 +1619,7 @@
         "NODE-026",
         "NODE-020"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Usuario sem rubrica e redirecionado a tela de registro em qualquer rota protegida que tente abrir",
@@ -1649,7 +1649,7 @@
         "NODE-027",
         "NODE-021"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Desenhar um retangulo na pagina 2 e escolher um signatario cria solicitacao pendente vinculada a versao atual",
@@ -1680,7 +1680,7 @@
         "NODE-028",
         "NODE-034"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "Senha correta conclui a assinatura e a rubrica aparece na area marcada com nome e horario",
@@ -1709,7 +1709,7 @@
         "NODE-032",
         "NODE-021"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "As etapas aparecem na tela do documento em ordem cronologica com autor e horario",
@@ -1735,7 +1735,7 @@
       "depends_on": [
         "NODE-036"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "O painel lista somente pendencias dirigidas ao proprio usuario autenticado",
@@ -1761,7 +1761,7 @@
         "NODE-036",
         "NODE-037"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "A jornada completa de assinatura e concluida usando somente o teclado",
@@ -1790,7 +1790,7 @@
         "NODE-037",
         "NODE-033"
       ],
-      "status": "proposed",
+      "status": "done",
       "validation": {
         "required": [
           "docker-compose.test.yml sobe API + Postgres + MinIO + Mailpit e o E2E roda contra esses servicos reais",

@@ -1,0 +1,95 @@
+{
+  "node_id": "NODE-030",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k without_a_reason or reason_is_trimmed passed",
+      "satisfies": "Recusar exige justificativa nao vazia",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "without_a_reason or reason_is_trimmed"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:00:00.006Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k declining_records passed",
+      "satisfies": "A recusa encerra a pendencia e registra autor + horario + justificativa",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "declining_records"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:00:06.368Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k requester_may_cancel or administrator_may_cancel or unrelated_colleague or cancelling_without_a_reason passed",
+      "satisfies": "Cancelar uma pendencia so e permitido ao solicitante ou a um administrador",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "requester_may_cancel or administrator_may_cancel or unrelated_colleague or cancelling_without_a_reason"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:00:19.261Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k signatory_may_not_cancel or only_the_signatory_may_refuse passed",
+      "satisfies": "Signatario recebe 403 ao tentar cancelar solicitacao dirigida a outra pessoa",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "signatory_may_not_cancel or only_the_signatory_may_refuse"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:00:27.258Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k no_longer_be_signed or no_longer_be_refused or refusing_twice or frees_a_new_one passed",
+      "satisfies": "Pendencia recusada ou cancelada nao pode mais ser assinada",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "no_longer_be_signed or no_longer_be_refused or refusing_twice or frees_a_new_one"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T13:00:40.839Z"
+    }
+  ]
+}

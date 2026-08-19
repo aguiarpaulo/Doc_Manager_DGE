@@ -10,6 +10,7 @@ from app.dependencies import get_current_user, get_db, require_admin
 from app.models.obra import Obra
 from app.models.user import Role, User
 from app.schemas.obra import ObraCreate, ObraRead, ObraUpdate
+from app.schemas.user import UserRead
 from app.scope import can_access_obra, scope_obra_query
 
 router = APIRouter(prefix="/obras", tags=["obras"])
@@ -136,3 +137,37 @@ def unassign_user(
     if user is not None and user in obra.users:
         obra.users.remove(user)
         db.commit()
+
+
+@router.get("/{obra_id}/users", response_model=list[UserRead])
+def list_obra_users(
+    obra_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[User]:
+    """Quem pode alcançar esta obra — os candidatos a signatário.
+
+    Existe porque `GET /users` é admin-only e o autor de um documento (que pode ser
+    um engenheiro) precisa escolher a quem pedir assinatura. Só é possível ler a
+    lista de uma obra que o próprio chamador alcança, e a resposta é exatamente o
+    conjunto que `app/scope.py` considera com acesso: os atribuídos, mais os papéis
+    de acesso global.
+    """
+    if not can_access_obra(db, current_user, obra_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Obra não encontrada")
+
+    obra = db.get(Obra, obra_id)
+    if obra is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Obra não encontrada")
+
+    atribuidos = {u.id: u for u in obra.users if u.is_active}
+    globais = db.execute(
+        select(User).where(
+            User.is_active.is_(True),
+            User.role.in_([Role.ADMINISTRADOR, Role.DIRETOR]),
+        )
+    ).scalars()
+    for usuario in globais:
+        atribuidos.setdefault(usuario.id, usuario)
+
+    return sorted(atribuidos.values(), key=lambda u: u.username)
