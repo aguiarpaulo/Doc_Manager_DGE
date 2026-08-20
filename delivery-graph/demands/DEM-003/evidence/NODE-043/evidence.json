@@ -1,0 +1,113 @@
+{
+  "node_id": "NODE-043",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t ver a rubrica passed",
+      "satisfies": "A tela mostra a rubrica registrada quando existe e convida ao registro quando nao existe",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "ver a rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:11:46.226Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t trocar a rubrica passed",
+      "satisfies": "Trocar abre o mesmo canvas do primeiro acesso e a nova rubrica substitui a anterior",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "trocar a rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:12:30.091Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t apagar a rubrica passed",
+      "satisfies": "Apagar exige senha no Modal reaproveitado do NODE-036 e informa que assinaturas ja feitas continuam validas",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "apagar a rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:13:06.080Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t o guarda volta a exigir o registro passed",
+      "satisfies": "Depois de apagar o guarda de rota volta a exigir o registro na proxima rota protegida",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "o guarda volta a exigir o registro"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:13:42.067Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t fronteira de dados passed",
+      "satisfies": "Nenhuma chamada da tela envia id de usuario; a fronteira so usa /me/signature",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "fronteira de dados"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:14:18.536Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t ver a rubrica passed",
+      "satisfies": "Estados de carga vazio e erro sao distintos e acionaveis",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "ver a rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:14:57.635Z"
+    }
+  ]
+}

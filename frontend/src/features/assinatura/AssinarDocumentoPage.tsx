@@ -22,9 +22,15 @@ import type {
   SolicitacaoAssinatura,
 } from "../../data/contracts.ts";
 import { ApplicationError } from "../../data/errors.ts";
-import { useApiData } from "../../data/useApiData.ts";
+import { aguardandoDependencia, useApiData } from "../../data/useApiData.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
+import { VisualizadorPdf, type AreaNormalizada } from "./VisualizadorPdf.tsx";
 import "./assinatura.css";
+
+interface ConteudoBaixado {
+  readonly blob: Blob;
+  readonly contentType: string;
+}
 
 function formatar(iso: string): string {
   const data = new Date(iso);
@@ -49,6 +55,16 @@ export function AssinarDocumentoPage() {
     documentoId,
   ]);
 
+  // O conteudo so e baixado quando ha versao, e serve para o signatario LER o
+  // documento antes de confirmar — decisao do GAP-008.
+  const versao =
+    documento.estado.status === "success" ? documento.estado.data.current_version : null;
+  const buscarConteudo = useCallback((): Promise<ConteudoBaixado> => {
+    if (versao === null) return aguardandoDependencia();
+    return api.baixarVersao(documentoId, versao);
+  }, [documentoId, versao]);
+  const conteudo = useApiData<ConteudoBaixado>(buscarConteudo, [documentoId, versao]);
+
   const buscarAssinaturas = useCallback(
     (signal: AbortSignal) => api.listarAssinaturas(documentoId, signal),
     [documentoId],
@@ -60,12 +76,33 @@ export function AssinarDocumentoPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  const [recusaAberta, setRecusaAberta] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [erroRecusa, setErroRecusa] = useState<string | null>(null);
+  const [recusando, setRecusando] = useState(false);
+
   const minhaPendencia =
     solicitacoes.estado.status === "success"
       ? solicitacoes.estado.data.find(
           (s) => s.status === "pendente" && s.signatario_id === usuario?.id,
         )
       : undefined;
+
+  // A area que o solicitante marcou, no formato que o visualizador entende. So
+  // destacada: a rubrica em si e desenhada pelo servidor, no PDF baixado.
+  const areaMarcada: AreaNormalizada | null =
+    minhaPendencia === undefined
+      ? null
+      : {
+          pagina: minhaPendencia.pagina,
+          x: minhaPendencia.x,
+          y: minhaPendencia.y,
+          largura: minhaPendencia.largura,
+          altura: minhaPendencia.altura,
+          pageWidth: minhaPendencia.page_width,
+          pageHeight: minhaPendencia.page_height,
+        };
+
 
   function fechar() {
     setModalAberto(false);
@@ -92,6 +129,37 @@ export function AssinarDocumentoPage() {
       );
     } finally {
       setEnviando(false);
+    }
+  }
+
+  function fecharRecusa() {
+    setRecusaAberta(false);
+    setMotivo("");
+    setErroRecusa(null);
+  }
+
+  async function recusar() {
+    if (recusando || !minhaPendencia) return;
+    // Sem motivo o solicitante fica sem nada em que agir; a API tambem recusa.
+    if (motivo.trim() === "") {
+      setErroRecusa("Informe o motivo da recusa.");
+      return;
+    }
+    setErroRecusa(null);
+    setRecusando(true);
+    try {
+      await api.recusarSolicitacao(documentoId, minhaPendencia.id, motivo.trim());
+      fecharRecusa();
+      solicitacoes.recarregar();
+    } catch (falha: unknown) {
+      // O texto digitado permanece: reescreve-lo seria punir quem ja explicou.
+      setErroRecusa(
+        falha instanceof ApplicationError
+          ? falha.message
+          : "Nao foi possivel recusar. Tente novamente.",
+      );
+    } finally {
+      setRecusando(false);
     }
   }
 
@@ -130,16 +198,56 @@ export function AssinarDocumentoPage() {
           <p>
             Você foi indicado para assinar na página {minhaPendencia.pagina}.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              setModalAberto(true);
-            }}
-          >
-            Assinar documento
-          </button>
+          <div className="assinar__acoes">
+            <button
+              type="button"
+              onClick={() => {
+                setModalAberto(true);
+              }}
+            >
+              Assinar documento
+            </button>
+            {/* Recusar so aparece para quem e o signatario indicado — a mesma
+                condicao que faz o bloco inteiro existir. */}
+            <button
+              type="button"
+              onClick={() => {
+                setRecusaAberta(true);
+              }}
+            >
+              Recusar assinatura
+            </button>
+          </div>
         </>
       )}
+
+      <section aria-labelledby="titulo-documento">
+        <h2 id="titulo-documento">O documento</h2>
+        {conteudo.estado.status === "loading" && (
+          <p role="status">Carregando o documento...</p>
+        )}
+        {conteudo.estado.status === "error" && (
+          <p role="alert">{conteudo.estado.error.message}</p>
+        )}
+        {conteudo.estado.status === "success" &&
+          (conteudo.estado.data.contentType.split(";")[0]?.trim().toLowerCase() ===
+          "application/pdf" ? (
+            <VisualizadorPdf
+              arquivo={conteudo.estado.data.blob}
+              areaAtual={areaMarcada}
+              // Abre na pagina marcada: quem assina nao deveria ter de procurar
+              // onde a assinatura foi pedida.
+              paginaInicial={areaMarcada?.pagina ?? 1}
+              // Nesta tela a area nao e editavel: quem assina le, nao remarca.
+              aoMarcar={() => undefined}
+            />
+          ) : (
+            <p data-testid="sem-previa">
+              Este documento nao e PDF ({conteudo.estado.data.contentType}) e nao
+              tem previa. As informacoes acima descrevem o que sera assinado.
+            </p>
+          ))}
+      </section>
 
       <section aria-labelledby="titulo-assinaturas">
         <h2 id="titulo-assinaturas">Assinaturas neste documento</h2>
@@ -155,6 +263,42 @@ export function AssinarDocumentoPage() {
           </ul>
         )}
       </section>
+
+      <Modal
+        titulo="Recusar a assinatura"
+        aberto={recusaAberta}
+        aoFechar={fecharRecusa}
+      >
+        <p>
+          Diga por que você não vai assinar. O motivo fica registrado na linha do
+          tempo do documento e é enviado a quem solicitou.
+        </p>
+
+        {erroRecusa !== null && <p role="alert">{erroRecusa}</p>}
+
+        <label htmlFor="motivo-recusa">Motivo</label>
+        <textarea
+          id="motivo-recusa"
+          rows={3}
+          value={motivo}
+          onChange={(e) => {
+            setMotivo(e.target.value);
+          }}
+        />
+
+        <div className="modal__acoes">
+          <button type="button" onClick={fecharRecusa} disabled={recusando}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={() => void recusar()}
+            disabled={recusando || motivo.trim() === ""}
+          >
+            {recusando ? "Recusando..." : "Confirmar recusa"}
+          </button>
+        </div>
+      </Modal>
 
       <Modal titulo="Confirme sua senha para assinar" aberto={modalAberto} aoFechar={fechar}>
         <p>

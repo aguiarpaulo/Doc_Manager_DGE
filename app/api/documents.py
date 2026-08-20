@@ -542,8 +542,9 @@ def decline_signature_request(
     payload: DeclineRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    email_sender: EmailSender = Depends(get_email_sender),
 ) -> SignatureRequestRead:
-    """Refuse to sign, stating why."""
+    """Refuse to sign, stating why. The requester is notified."""
     document = get_visible_document(db, current_user, document_id)
     request = signature_requests.get_request(db, request_id)
     if request.document_id != document.id:
@@ -551,6 +552,7 @@ def decline_signature_request(
             status_code=status.HTTP_404_NOT_FOUND, detail="Solicitação não encontrada."
         )
 
+    solicitante_id = request.solicitante_id
     request = signing.decline(
         db, request=request, user=current_user, motivo=payload.motivo
     )
@@ -563,6 +565,18 @@ def decline_signature_request(
         detail=f"recusado por {current_user.username}: {request.motivo}",
     )
     db.commit()
+
+    # Quem pediu a assinatura precisa saber que ela nao vira, e por que. Enviado
+    # depois do commit e com a falha engolida: perder o aviso e recuperavel,
+    # perder a recusa nao seria.
+    solicitante = db.get(User, solicitante_id)
+    if solicitante is not None:
+        email_sender.send_signature_declined(
+            solicitante.email,
+            documento=document.nome,
+            signatario=current_user.username,
+            motivo=request.motivo or "",
+        )
     return SignatureRequestRead.model_validate(request)
 
 

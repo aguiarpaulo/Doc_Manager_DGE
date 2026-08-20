@@ -71,6 +71,11 @@ beforeEach(() => {
     blob: new Blob(["texto do documento"], { type: "text/plain" }),
     contentType: "text/plain",
   });
+  // A linha do tempo tambem e montada pelo shell. Sem este duplo o auto-mock
+  // devolve `undefined`, que chega ao componente como sucesso e estoura no
+  // `.map` — de forma assincrona, depois do teste que a disparou, que e por que
+  // a falha aparecia de forma intermitente e num arquivo que nao a causou.
+  vi.mocked(api.historicoDocumento).mockResolvedValue([]);
 });
 
 describe("ordenarPorInclusao", () => {

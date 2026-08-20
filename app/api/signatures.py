@@ -12,14 +12,15 @@ URL, so every read passes an authorization decision.
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Response, UploadFile, status
-from pydantic import BaseModel, ConfigDict
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.signature_request import SignatureRequestRead
+from app.security import verify_password
 from app.services import signature_requests, signatures
 from app.storage import ObjectStorage, get_storage
 
@@ -72,13 +73,39 @@ def download_signature(
     )
 
 
+class RemoveSignatureRequest(BaseModel):
+    """Password confirmation for withdrawing the rubric.
+
+    Sent as the body of a DELETE. RFC 9110 says a client SHOULD NOT generate
+    content in a DELETE, and some intermediaries drop it — but the only proxy in
+    front of this API is our own Caddy, which forwards bodies for every method.
+    If that ever changes, moving this to a POST is a local change.
+    """
+
+    password: str = Field(min_length=1)
+
+
 @router.delete("/signature", status_code=status.HTTP_204_NO_CONTENT)
 def remove_signature(
+    payload: RemoveSignatureRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     storage: ObjectStorage = Depends(get_storage),
 ) -> None:
-    """Withdraw the caller's own rubric. Past signatures keep their own snapshot."""
+    """Withdraw the caller's own rubric, confirming with their own password.
+
+    The password requirement mirrors the act of signing: an open session on an
+    unlocked machine can click a button, but cannot supply a password the person
+    never typed. Withdrawing a rubric is not reversible — the image is gone — so
+    the same bar applies.
+
+    Signatures already applied are untouched: each keeps its own snapshot copy,
+    which is what makes exercising this right compatible with the audit trail.
+    """
+    if not verify_password(payload.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Senha incorreta."
+        )
     signatures.delete_signature(db, storage, current_user)
 
 

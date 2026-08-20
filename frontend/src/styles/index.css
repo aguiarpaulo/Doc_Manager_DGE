@@ -11,6 +11,11 @@
   --color-surface: #ffffff;
   --color-surface-muted: #f1f3f5;
   --color-border: #d3d8de;
+  /* Borda de componente. A WCAG 1.4.11 exige 3:1 para o que identifica um
+     controle, e --color-border (1.43:1 sobre branco) so serve como divisoria
+     decorativa. Campo, select, area de desenho e modal usam este; painel e
+     separador continuam com o outro. */
+  --color-border-strong: #8b939c;
   --color-text-primary: #1c1f23;
   --color-text-secondary: #5a6169;
 
@@ -62,6 +67,7 @@
     --color-surface: #1d2026;
     --color-surface-muted: #262a32;
     --color-border: #3a404b;
+    --color-border-strong: #6b7484;
     --color-text-primary: #eceef2;
     --color-text-secondary: #a8b0bd;
 
@@ -83,6 +89,7 @@
   --color-surface: #1d2026;
   --color-surface-muted: #262a32;
   --color-border: #3a404b;
+  --color-border-strong: #6b7484;
   --color-text-primary: #eceef2;
   --color-text-secondary: #a8b0bd;
 
@@ -111,6 +118,20 @@ body {
   font-family: var(--font-body);
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
+}
+
+/* Campos de formulario. Ate aqui usavam a borda do navegador, que varia entre
+   navegadores e nao tem contraste garantido; com cantos retos a borda e o unico
+   sinal de onde o controle comeca e termina. */
+input,
+select,
+textarea {
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
 }
 
 /* O foco visivel nunca e removido sem substituto melhor. */

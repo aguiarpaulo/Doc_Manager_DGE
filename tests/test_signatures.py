@@ -10,8 +10,22 @@ import uuid
 from app.models.signature import UserSignature
 from app.models.user import Role
 from app.storage import InMemoryStorage
+from tests.conftest import make_png
 
-PNG = b"\x89PNG\r\n\x1a\n" + b"rubrica desenhada"
+# PNG real: bytes com a assinatura correta mas sem estrutura valida passam pela
+# validacao da API (que so olha o content type) e so falham la na frente, quando
+# o carimbo tenta desenhar a rubrica no PDF.
+PNG = make_png()
+
+
+SENHA = "s3cret-pass"
+
+
+def _apagar(client, headers, senha: str = SENHA):
+    """DELETE com corpo: a senha confirma o ato, como ao assinar."""
+    return client.request(
+        "DELETE", "/me/signature", json={"password": senha}, headers=headers
+    )
 
 
 def _upload(client, headers, data: bytes = PNG, content_type: str = "image/png"):
@@ -172,7 +186,7 @@ def test_owner_deletes_own_rubric_and_the_object_disappears(
     chave = db_session.query(UserSignature).one().object_key
     assert chave in storage.objects
 
-    response = client.delete("/me/signature", headers=headers)
+    response = _apagar(client, headers)
 
     assert response.status_code == 204
     assert chave not in storage.objects
@@ -182,7 +196,7 @@ def test_owner_deletes_own_rubric_and_the_object_disappears(
 
 
 def test_deleting_without_a_rubric_is_404(client, auth_headers):
-    assert client.delete("/me/signature", headers=auth_headers(Role.ENGENHEIRO)).status_code == 404
+    assert _apagar(client, auth_headers(Role.ENGENHEIRO)).status_code == 404
 
 
 def test_deactivating_a_user_keeps_the_rubric(
@@ -231,7 +245,9 @@ def test_auth_me_never_returns_the_image_itself(client, auth_headers):
 
 def test_rubric_requires_authentication(client):
     assert client.get("/me/signature").status_code in (401, 403)
-    assert client.delete("/me/signature").status_code in (401, 403)
+    assert client.request(
+        "DELETE", "/me/signature", json={"password": SENHA}
+    ).status_code in (401, 403)
 
 
 # --- storage protocol -------------------------------------------------------------
@@ -276,3 +292,139 @@ def test_minio_storage_delegates_delete_to_the_client_and_bucket():
 
     assert chamadas == [("documents", "rubricas/abc/def.png")]
     assert uuid.UUID  # keeps the import list honest under ruff
+
+
+# --- confirmacao por senha ao apagar ------------------------------------------------
+
+
+def test_wrong_password_refuses_and_deletes_nothing(
+    client, auth_headers, db_session, storage: InMemoryStorage
+):
+    """Uma sessao aberta nao basta: a senha e o que confirma o ato."""
+    headers = auth_headers(Role.ENGENHEIRO)
+    _upload(client, headers)
+    chave = db_session.query(UserSignature).one().object_key
+
+    resposta = _apagar(client, headers, senha="senha-errada")
+
+    assert resposta.status_code == 403
+    assert "Senha incorreta" in resposta.json()["detail"]
+    db_session.expire_all()
+    # Nada foi apagado: nem o metadado nem o objeto.
+    assert db_session.query(UserSignature).count() == 1
+    assert chave in storage.objects
+    assert client.get("/me/signature", headers=headers).content == PNG
+
+
+def test_an_empty_password_is_rejected(client, auth_headers, db_session):
+    headers = auth_headers(Role.ENGENHEIRO)
+    _upload(client, headers)
+
+    resposta = client.request("DELETE", "/me/signature", json={"password": ""}, headers=headers)
+
+    assert resposta.status_code in (403, 422)
+    db_session.expire_all()
+    assert db_session.query(UserSignature).count() == 1
+
+
+def test_a_missing_body_is_rejected(client, auth_headers, db_session):
+    headers = auth_headers(Role.ENGENHEIRO)
+    _upload(client, headers)
+
+    resposta = client.delete("/me/signature", headers=headers)
+
+    # O corpo passou a ser obrigatorio: apagar sem confirmar nao e mais possivel.
+    assert resposta.status_code == 422
+    db_session.expire_all()
+    assert db_session.query(UserSignature).count() == 1
+
+
+def test_another_users_password_does_not_delete_my_rubric(
+    client, make_user, headers_for, db_session
+):
+    make_user(email="ana@example.com", password="senha-da-ana-123", role=Role.ENGENHEIRO)
+    make_user(email="bruno@example.com", password="senha-do-bruno-123", role=Role.ENGENHEIRO)
+    ana = headers_for("ana@example.com", "senha-da-ana-123")
+    _upload(client, ana)
+
+    # A senha do outro nao serve, ainda que o chamador seja a Ana.
+    resposta = _apagar(client, ana, senha="senha-do-bruno-123")
+
+    assert resposta.status_code == 403
+    db_session.expire_all()
+    assert db_session.query(UserSignature).count() == 1
+
+
+def test_the_delete_route_still_takes_no_user_id(client):
+    """A protecao continua estrutural, nao virou uma checagem de senha."""
+    caminhos = set(client.app.openapi()["paths"])
+    de_rubrica = {c for c in caminhos if "signature" in c and not c.startswith("/documents")}
+
+    assert de_rubrica == {"/me/signature", "/me/signature-requests"}
+    assert all("{user_id}" not in c for c in de_rubrica)
+
+
+def test_deleting_keeps_every_applied_signature_and_its_snapshot(
+    client, db_session, make_user, make_obra, make_document, headers_for, storage
+):
+    """O direito de exclusao nao pode reescrever o passado."""
+    from app.models.signature_applied import AppliedSignature
+    from tests.conftest import make_pdf
+
+    autor = make_user(email="ana@example.com", role=Role.ENGENHEIRO)
+    assinante = make_user(email="bruno@example.com", role=Role.ENGENHEIRO)
+    obra = make_obra(users=[autor, assinante])
+    documento = make_document(obra, autor)
+    ana = headers_for("ana@example.com")
+    bruno = headers_for("bruno@example.com")
+
+    client.post(
+        f"/documents/{documento.id}/versions",
+        files={"file": ("c.pdf", make_pdf(), "application/pdf")},
+        headers=ana,
+    )
+    _upload(client, bruno)
+    pedido = client.post(
+        f"/documents/{documento.id}/signature-requests",
+        json={
+            "signatario_id": str(assinante.id),
+            "pagina": 1,
+            "x": 0.1,
+            "y": 0.7,
+            "largura": 0.3,
+            "altura": 0.08,
+            "page_width": 595.0,
+            "page_height": 842.0,
+        },
+        headers=ana,
+    ).json()
+    client.post(
+        f"/documents/{documento.id}/signature-requests/{pedido['id']}/sign",
+        json={"password": SENHA},
+        headers=bruno,
+    )
+    db_session.expire_all()
+    assinatura = db_session.query(AppliedSignature).one()
+
+    assert _apagar(client, bruno).status_code == 204
+
+    db_session.expire_all()
+    # A assinatura e sua copia da rubrica seguem intactas.
+    assert db_session.query(AppliedSignature).count() == 1
+    assert storage.objects[assinatura.rubrica_object_key] == PNG
+    # E o documento continua entregando o PDF carimbado.
+    baixado = client.get(f"/documents/{documento.id}/versions/1/download", headers=ana)
+    assert baixado.status_code == 200
+
+
+def test_the_password_is_never_stored_or_echoed(client, auth_headers, db_session):
+    headers = auth_headers(Role.ENGENHEIRO)
+    _upload(client, headers)
+
+    resposta = _apagar(client, headers)
+
+    assert resposta.status_code == 204
+    assert resposta.content == b""
+    # Nenhuma linha remanescente pode conter a senha.
+    restantes = db_session.query(UserSignature).all()
+    assert restantes == []

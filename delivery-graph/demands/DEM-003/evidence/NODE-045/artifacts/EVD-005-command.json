@@ -1,0 +1,14 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vite/bin/vite.js",
+    "build",
+    "frontend"
+  ],
+  "exit_code": 0,
+  "stdout": "\u001b[36mvite v8.2.1 \u001b[32mbuilding client environment for production...\u001b[36m\u001b[39m\n\u001b[2K\rtransforming...✓ 55 modules transformed.\nrendering chunks...\ncomputing gzip size...\nfrontend/dist/index.html                              0.40 kB │ gzip:   0.27 kB\nfrontend/dist/assets/pdf.worker.min-CHFwMXne.mjs  1,262.39 kB\nfrontend/dist/assets/index-C1RENeKf.css               7.79 kB │ gzip:   1.92 kB\nfrontend/dist/assets/index-C_RAnntj.js              283.84 kB │ gzip:  87.36 kB\nfrontend/dist/assets/pdf-CT1BSCYW.js                427.30 kB │ gzip: 127.39 kB\n\n\u001b[32m✓ built in 679ms\u001b[39m\n",
+  "stderr": "",
+  "created_at": "2026-08-19T18:21:20.066Z",
+  "artifacts": []
+}

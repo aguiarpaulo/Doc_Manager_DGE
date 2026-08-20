@@ -27,9 +27,20 @@
   display: block;
   max-width: 100%;
   background: var(--color-surface);
-  /* Sem arredondamento, a borda é o que delimita a área de desenho. */
-  border: var(--border-width) solid var(--color-border);
+  /* Sem arredondamento, a borda é o que delimita a área de desenho — então ela
+     precisa dos 3:1 da WCAG 1.4.11, não da borda decorativa. */
+  border: var(--border-width) solid var(--color-border-strong);
   cursor: crosshair;
+}
+
+.rubrica__imagem {
+  display: block;
+  max-width: 100%;
+  /* Mesmo tratamento do canvas: a borda delimita o traço, que é preto sobre
+     transparente e sem ela flutuaria no fundo da página. Os dois ocupam o mesmo
+     lugar na tela e alternam entre si, então a borda tem de ser a mesma. */
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border-strong);
 }
 
 .rubrica__acoes {

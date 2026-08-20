@@ -1,0 +1,104 @@
+{
+  "node_id": "NODE-042",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k notifies_the_requester or no_email_when_the_refusal_is_refused passed",
+      "satisfies": "Recusar envia exatamente um e-mail ao solicitante da assinatura e nenhum ao proprio signatario",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "notifies_the_requester or no_email_when_the_refusal_is_refused"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:49:52.587Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k carries_document_signer_and_reason passed",
+      "satisfies": "O corpo traz nome do documento quem recusou e a justificativa informada",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "carries_document_signer_and_reason"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:50:00.995Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k smtp_failure_does_not_undo_the_refusal passed",
+      "satisfies": "Falha de SMTP nao desfaz a recusa e e registrada em log (mesma ordem do NODE-028: envio depois do commit)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "smtp_failure_does_not_undo_the_refusal"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:50:13.567Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k console_sender_logs_the_refusal or notifies_the_requester passed",
+      "satisfies": "send_signature_declined existe nas tres implementacoes do protocolo EmailSender",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "console_sender_logs_the_refusal or notifies_the_requester"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:50:20.677Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "manual",
+      "summary": "Mailpit real recebeu a mensagem enviada por um SMTPEmailSender construido sem usuario e sem senha (relay por IP): De ged@exemplo.com, Para ana@exemplo.com, assunto 'Assinatura recusada: Contrato principal', e o corpo contendo o documento o signatario e a justificativa.",
+      "satisfies": "Verificado contra um SMTP real (Mailpit) e nao apenas com InMemoryEmailSender (licao do NODE-015)",
+      "result": "pass",
+      "artifact": "artifacts/EVD-005-PROOF-email-recusa-smtp-real.txt",
+      "created_at": "2026-08-19T17:50:21.196Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signature_decline_cancel.py -q -k no_model_or_migration passed",
+      "satisfies": "Nenhuma alteracao de modelo ou migracao foi introduzida",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signature_decline_cancel.py",
+        "-q",
+        "-k",
+        "no_model_or_migration"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:50:26.896Z"
+    }
+  ]
+}

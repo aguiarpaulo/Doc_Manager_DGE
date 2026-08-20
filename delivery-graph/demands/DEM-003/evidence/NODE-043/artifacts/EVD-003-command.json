@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "-t",
+    "apagar a rubrica"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed | 18 skipped (19)\n      Tests  5 passed | 227 skipped (232)\n   Start at  15:12:31\n   Duration  34.02s (transform 2.75s, setup 14.41s, import 9.10s, tests 3.26s, environment 56.35s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T18:13:06.076Z",
+  "artifacts": []
+}

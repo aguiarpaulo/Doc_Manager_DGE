@@ -1,0 +1,126 @@
+{
+  "node_id": "NODE-041",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k wrong_password_refuses or empty_password or missing_body passed",
+      "satisfies": "DELETE /me/signature passa a exigir a senha do titular e recusa com 403 quando ela esta errada",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "wrong_password_refuses or empty_password or missing_body"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:27:10.024Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k wrong_password_refuses or another_users_password passed",
+      "satisfies": "Senha errada nao apaga nada: a rubrica continua legivel e o objeto segue no armazenamento",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "wrong_password_refuses or another_users_password"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:27:17.975Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k delete_route_still_takes_no_user_id or addresses_a_rubric_by_user_id passed",
+      "satisfies": "A rota continua sem id de usuario; apagar a rubrica alheia segue inexprimivel e nao apenas proibido",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "delete_route_still_takes_no_user_id or addresses_a_rubric_by_user_id"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:27:23.639Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k keeps_every_applied_signature passed",
+      "satisfies": "Apagar nao altera nenhuma assinatura ja aplicada nem o snapshot que cada uma guarda",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "keeps_every_applied_signature"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:27:31.229Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest tests/test_signatures.py -q -k password_is_never_stored passed",
+      "satisfies": "A senha nao aparece em log nem em nenhuma coluna gravada",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "tests/test_signatures.py",
+        "-q",
+        "-k",
+        "password_is_never_stored"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:27:37.426Z"
+    },
+    {
+      "id": "EVD-006",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m pytest -q passed",
+      "satisfies": "pytest e ruff passam integralmente (licao do NODE-025: mudanca de contrato de endpoint exige a suite inteira e nao so o arquivo tocado)",
+      "artifact": "artifacts/EVD-006-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:31:59.187Z"
+    },
+    {
+      "id": "EVD-007",
+      "kind": "command",
+      "summary": ".venv/Scripts/python.exe -m ruff check . passed",
+      "satisfies": "pytest e ruff passam integralmente (licao do NODE-025: mudanca de contrato de endpoint exige a suite inteira e nao so o arquivo tocado)",
+      "artifact": "artifacts/EVD-007-command.json",
+      "command": [
+        ".venv/Scripts/python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T17:31:59.961Z"
+    }
+  ]
+}

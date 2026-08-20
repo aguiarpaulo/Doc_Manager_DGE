@@ -1,0 +1,15 @@
+{
+  "kind": "command",
+  "command": [
+    ".venv/Scripts/python.exe",
+    "-m",
+    "ruff",
+    "check",
+    "."
+  ],
+  "exit_code": 0,
+  "stdout": "All checks passed!\n",
+  "stderr": "",
+  "created_at": "2026-08-19T17:31:59.957Z",
+  "artifacts": []
+}

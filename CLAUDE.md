@@ -55,6 +55,11 @@ npm --prefix frontend run typecheck # tsc --noEmit
 npm --prefix frontend run lint      # eslint
 npm --prefix frontend run build     # tsc --noEmit && vite build — a type error fails the build
 
+# Browser E2E — needs the test stack up first (nothing is mocked):
+docker compose -f docker-compose.test.yml -p gede2e up -d --build
+npx --prefix frontend playwright test        # or: cd frontend && npx playwright test
+docker compose -f docker-compose.test.yml -p gede2e down -v   # tear down
+
 # Integration tests hit a real API and are skipped unless GED_LIVE_API=1:
 #   GED_LIVE_API=1 GED_LIVE_USER=admin GED_LIVE_PASSWORD=... #   VITE_API_BASE_URL=http://127.0.0.1:8000 npx vitest run src/data/documentos.integration.test.ts
 ```
@@ -209,20 +214,65 @@ already `loading`, the ref holding the fetch function is updated inside an effec
 rather than during render, and blob URLs come from `useMemo` with the effect only
 revoking them.
 
-**Testing the UI has two tiers, and mixing them up is how bugs ship.** Component
+**The signature subsystem keeps two things separate that look like one.** A
+*profile rubric* (`app/models/signature.py`) is mutable and deletable — it is
+personal data, so LGPD requires it can be withdrawn, which is why it lives in its
+own table even though a user is never hard-deleted. An *applied signature*
+(`app/models/signature_applied.py`) stores `rubrica_object_key` pointing at an
+immutable **copy** made at signing time. That copy is the whole reason deleting
+your rubric cannot invalidate signatures you already made — and it is verified by
+downloading the stamped PDF before and after deletion and requiring the same
+SHA-256.
+
+**The vertical flip happens exactly once, server-side.** A signature request
+(`app/models/signature_request.py`) stores `x/y/largura/altura` as 0..1 fractions
+with a **top-left** origin — the way the canvas measured them — plus the page size
+in points, because a PDF may mix page sizes. PDF coordinates start bottom-left, so
+`to_pdf_rect()` in `app/services/pdf_stamp.py` is the only place that inverts.
+The SPA therefore never previews the stamp: a client-side preview would be a
+second implementation of that rule, free to diverge and to lie about what gets
+written. It highlights the marked area and nothing else. Stamping is on demand
+(pypdf + reportlab, pure Python) and the stored object is never modified.
+
+**Signing is gated on the password, and the rubric guard is gated on
+`has_signature`.** `RotaProtegida` sends anyone without a rubric to `/rubrica`;
+`ROTAS_SEM_RUBRICA` exempts that screen (or it would loop) *and* `/perfil/rubrica`,
+because deleting your rubric must not eject you from the screen where you just
+deleted it — the guard reasserts itself on the next protected route. Deleting also
+requires the password, for a different reason than signing does: signing needs
+non-repudiation, deletion is simply irreversible.
+
+**A fetch that depends on data not yet loaded must not reject.**
+`aguardandoDependencia()` in `useApiData.ts` returns a promise that never settles,
+leaving the state at `loading`. Rejecting instead — which the signing screen did at
+first — paints a failure that did not happen on every mount, and races the real
+failure that arrives later, so which error the user saw depended on who resolved
+first.
+
+**Testing the UI has three tiers, and mixing them up is how bugs ship.** Component
 tests (`*.test.tsx`) mock the data boundary and cover route, first load, empty,
 error and mutation states — they need no services. Integration tests
 (`src/data/*.integration.test.ts`) run the *real* boundary against a live API and
-are skipped unless `GED_LIVE_API=1`. Only the second tier proves anything about the
+are skipped unless `GED_LIVE_API=1`. Playwright specs (`frontend/e2e/`) drive a
+real browser against the whole stack. Only the last two prove anything about the
 contract: writing the first tier against an invented contract is exactly how
 `POST /documents` was coded as a FormData upload when the API actually takes JSON
-and puts the file in a separate `/versions` call.
+and puts the file in a separate `/versions` call. Some things are *only*
+provable in the browser — a stroke on the canvas, a PDF rendered by pdfjs, a
+rectangle dragged with the mouse — so jsdom tests must not claim them.
 
 **Visual identity lives in `frontend/src/styles/index.css` as semantic tokens**,
 carried over from the Streamlit theme it replaced: one restrained accent
 (`#15497b`, 7:1 on white), neutral greys, 15px base type for denser document
 lists, and square corners (`--radius: 0`) — which is why `--border-width` is never
-zero, since borders do the structural work corners normally would. Status colours
+zero, since borders do the structural work corners normally would. **That is also
+why there are two border tokens.** `--color-border` (1.43:1) is a decorative
+divider; `--color-border-strong` (3.11:1 light / 3.46:1 dark) is what identifies a
+control — field, select, textarea, the rubric canvas, the modal — because WCAG
+1.4.11 requires 3:1 there and, with no rounded corners, the border is the only
+thing marking where a control begins. A test enumerates every `--color-*` token
+and fails if one is neither in the approved-combination list nor exempted with a
+written reason, so the list cannot silently go stale. Status colours
 differ in lightness as well as hue so the four document states stay distinguishable
 in greyscale or to a red-green colourblind reader. No literal colour may appear
 outside that file.
@@ -241,11 +291,15 @@ an invented `POST /documents` contract and only a live-API test exposed it.
   service publishes no host port, and `GED_DATABASE_URL`'s built-in default
   (`ged:ged`) does not match a generated `.env`. Needs a local compose override.
 - **No test coverage measurement** (`pytest-cov` not configured).
-- **No automated end-to-end tests in a browser.** The pytest suite uses in-memory
-  fakes and the `scripts/smoke_*.py` scripts are manual-only. The frontend's
-  `*.integration.test.ts` files do run against a real API (and real MinIO), but they
-  drive the data boundary, not a browser — pixels and keyboard journeys are still
-  unproven until the Playwright suite exists.
+- **The browser suite exists but is Chromium-only and started by hand.**
+  `frontend/e2e/` holds two Playwright journeys (signing; refusal + rubric
+  deletion) that run against `docker-compose.test.yml` — Caddy serving the built
+  SPA, FastAPI, PostgreSQL, MinIO and Mailpit, nothing mocked. Bring the stack up
+  yourself (`docker compose -f docker-compose.test.yml -p gede2e up -d --build`)
+  and run `npx playwright test` from `frontend/`; the config has no `webServer` on
+  purpose, because the target is the *built* SPA and not `vite dev`. There is one
+  browser project and no CI to run any of it. The pytest suite still uses in-memory
+  fakes and `scripts/smoke_*.py` remain manual.
 - **`diretor` cannot administer anything.** `POST /obras`, `POST /users`,
   `PATCH /users/{id}`, `DELETE /obras/{id}` and `PUT/DELETE /obras/{obra}/users/{user}`
   are all `require_admin`, so the "Administração" tab is administrator-only. Widening

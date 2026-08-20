@@ -29,6 +29,12 @@ export interface VisualizadorPdfProps {
   readonly arquivo: Blob;
   readonly aoMarcar: (area: AreaNormalizada) => void;
   readonly areaAtual: AreaNormalizada | null;
+  /**
+   * Pagina aberta ao carregar. Quem vai assinar precisa cair direto na pagina
+   * onde a area foi marcada; obriga-lo a procura-la seria trabalho inutil e uma
+   * chance de assinar sem ter olhado.
+   */
+  readonly paginaInicial?: number;
 }
 
 interface PaginaRenderizada {
@@ -72,9 +78,14 @@ export function moverArea(
   return { ...area, y: limitar(area.y + acao.delta, 0, 1 - area.altura) };
 }
 
-export function VisualizadorPdf({ arquivo, aoMarcar, areaAtual }: VisualizadorPdfProps) {
+export function VisualizadorPdf({
+  arquivo,
+  aoMarcar,
+  areaAtual,
+  paginaInicial = 1,
+}: VisualizadorPdfProps) {
   const [estado, setEstado] = useState<EstadoPdf>({ status: "carregando" });
-  const [paginaAtiva, setPaginaAtiva] = useState(1);
+  const [paginaAtiva, setPaginaAtiva] = useState(paginaInicial);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const arrastandoRef = useRef<{ x: number; y: number } | null>(null);
   const [tentativa, setTentativa] = useState(0);

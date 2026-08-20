@@ -1,0 +1,77 @@
+{
+  "node_id": "NODE-046",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t dialogo de exclusao da rubrica passed",
+      "satisfies": "A confirmacao de exclusao da rubrica move o foco para dentro do Modal prende Tab e restaura o foco ao fechar",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "dialogo de exclusao da rubrica"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:39:18.664Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t auditoria com axe passed",
+      "satisfies": "A auditoria com axe nao acusa violacao na tela de perfil nem na tela de assinatura alterada",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "auditoria com axe"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:39:54.780Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t recusa do inicio ao fim sem usar o mouse passed",
+      "satisfies": "A jornada de recusa e concluida somente com teclado",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "recusa do inicio ao fim sem usar o mouse"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:40:31.061Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t contraste dos tokens passed",
+      "satisfies": "Qualquer token de cor novo entra na lista de combinacoes aprovadas e atende WCAG AA pela formula (o axe nao verifica contraste sob jsdom)",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "contraste dos tokens"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:41:06.740Z"
+    }
+  ]
+}

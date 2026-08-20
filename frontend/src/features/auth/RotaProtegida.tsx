@@ -10,6 +10,9 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "./AuthContext.tsx";
 
+/** Rotas protegidas por sessao, mas nao pela exigencia de rubrica. */
+const ROTAS_SEM_RUBRICA = new Set(["/rubrica", "/perfil/rubrica"]);
+
 export function RotaProtegida() {
   const { estado, temRubrica } = useAuth();
   const location = useLocation();
@@ -33,8 +36,10 @@ export function RotaProtegida() {
 
   // Sem rubrica registrada nao se entra em nenhuma rota protegida: assinar e o
   // proposito do sistema, e o registro e feito pelo proprio punho do titular.
-  // A propria tela de registro fica fora deste guarda, senao seria um laco.
-  if (!temRubrica && location.pathname !== "/rubrica") {
+  // A propria tela de registro fica fora deste guarda, senao seria um laco — e a
+  // do perfil tambem, senao apagar a rubrica expulsaria a pessoa da tela onde ela
+  // acabou de agir, antes de ver o resultado.
+  if (!temRubrica && !ROTAS_SEM_RUBRICA.has(location.pathname)) {
     return <Navigate to="/rubrica" replace state={{ de: destino }} />;
   }
 

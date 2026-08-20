@@ -30,11 +30,27 @@ import cssShell from "../obras/shell.css?raw";
 import cssAssinatura from "./assinatura.css?raw";
 import { AuthProvider } from "../auth/AuthContext.tsx";
 import { RotaProtegida } from "../auth/RotaProtegida.tsx";
+import { PerfilRubricaPage } from "../rubrica/PerfilRubricaPage.tsx";
 import { RegistroRubricaPage } from "../rubrica/RegistroRubricaPage.tsx";
 import { AssinarDocumentoPage } from "./AssinarDocumentoPage.tsx";
 
 vi.mock("../../data/api.ts");
 const api = await import("../../data/api.ts");
+
+// A tela de assinatura passou a renderizar o PDF (NODE-045).
+vi.mock("pdfjs-dist", () => ({
+  GlobalWorkerOptions: { workerSrc: "" },
+  getDocument: vi.fn(() => ({
+    promise: Promise.resolve({
+      numPages: 2,
+      getPage: () =>
+        Promise.resolve({
+          getViewport: () => ({ width: 595, height: 842 }),
+          render: () => ({ promise: Promise.resolve() }),
+        }),
+    }),
+  })),
+}));
 
 const BRUNO: Usuario = {
   id: "u-bruno",
@@ -112,6 +128,10 @@ beforeEach(() => {
   vi.mocked(api.listarSolicitacoes).mockResolvedValue([PENDENCIA]);
   vi.mocked(api.listarAssinaturas).mockResolvedValue([]);
   vi.mocked(api.assinarSolicitacao).mockResolvedValue(ASSINATURA);
+  vi.mocked(api.baixarVersao).mockResolvedValue({
+    blob: new Blob([new Uint8Array([37, 80, 68, 70])], { type: "application/pdf" }),
+    contentType: "application/pdf",
+  });
   vi.mocked(api.registrarRubrica).mockResolvedValue({
     id: "r-1",
     tipo: "image/png",
@@ -119,6 +139,17 @@ beforeEach(() => {
     hash: "a".repeat(64),
     atualizado_em: "2026-08-19T12:00:00Z",
   });
+  vi.mocked(api.recusarSolicitacao).mockResolvedValue({
+    ...PENDENCIA,
+    status: "recusada",
+    motivo: "Valor divergente na clausula 4.",
+    encerrado_em: "2026-08-19T14:00:00Z",
+  });
+  vi.mocked(api.baixarRubrica).mockResolvedValue({
+    blob: new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+    contentType: "image/png",
+  });
+  vi.mocked(api.apagarRubrica).mockResolvedValue(undefined);
 });
 
 function ArvoreAssinar() {
@@ -143,6 +174,20 @@ function ArvoreRubrica() {
         <Routes>
           <Route element={<RotaProtegida />}>
             <Route path="/rubrica" element={<RegistroRubricaPage />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </MemoryRouter>
+  );
+}
+
+function ArvorePerfil() {
+  return (
+    <MemoryRouter initialEntries={["/perfil/rubrica"]}>
+      <AuthProvider>
+        <Routes>
+          <Route element={<RotaProtegida />}>
+            <Route path="/perfil/rubrica" element={<PerfilRubricaPage />} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -182,6 +227,89 @@ describe("auditoria com axe", () => {
 
     expect(descrever(violacoes)).toBe("");
   });
+
+  it("a tela de perfil da rubrica nao acusa violacao", async () => {
+    const { container } = render(<ArvorePerfil />);
+    await screen.findByAltText("Sua rubrica registrada");
+
+    const violacoes = await auditar(container);
+
+    expect(descrever(violacoes)).toBe("");
+  });
+
+  it("o dialogo de exclusao da rubrica nao acusa violacao", async () => {
+    const user = userEvent.setup();
+    render(<ArvorePerfil />);
+    await user.click(await screen.findByRole("button", { name: "Apagar rubrica" }));
+
+    const violacoes = await auditar(document.body);
+
+    expect(descrever(violacoes)).toBe("");
+  });
+
+  it("o dialogo de recusa nao acusa violacao", async () => {
+    const user = userEvent.setup();
+    render(<ArvoreAssinar />);
+    await user.click(await screen.findByRole("button", { name: "Recusar assinatura" }));
+
+    const violacoes = await auditar(document.body);
+
+    expect(descrever(violacoes)).toBe("");
+  });
+});
+
+// --- foco no dialogo de exclusao ---------------------------------------------------
+
+
+describe("dialogo de exclusao da rubrica", () => {
+  it("move o foco para dentro ao abrir", async () => {
+    const user = userEvent.setup();
+    render(<ArvorePerfil />);
+    await user.click(await screen.findByRole("button", { name: "Apagar rubrica" }));
+
+    const dialogo = screen.getByRole("dialog", { name: "Apagar a rubrica" });
+    expect(dialogo.contains(document.activeElement)).toBe(true);
+    // O primeiro focavel e o campo de senha: quem abre ja pode digitar.
+    expect(document.activeElement).toBe(screen.getByLabelText("Confirme sua senha"));
+  });
+
+  it("prende o Tab dentro do dialogo", async () => {
+    const user = userEvent.setup();
+    render(<ArvorePerfil />);
+    await user.click(await screen.findByRole("button", { name: "Apagar rubrica" }));
+    // Com a senha preenchida os tres focaveis existem, e o ciclo e observavel.
+    await user.type(screen.getByLabelText("Confirme sua senha"), "s3cret");
+
+    const dialogo = screen.getByRole("dialog", { name: "Apagar a rubrica" });
+    const apagar = within(dialogo).getByRole("button", {
+      name: "Apagar definitivamente",
+    });
+    apagar.focus();
+
+    await user.tab();
+
+    // Do ultimo volta ao primeiro, sem escapar para o fundo.
+    expect(dialogo.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText("Confirme sua senha"));
+  });
+
+  it("fecha com Escape e devolve o foco a quem o abriu", async () => {
+    const user = userEvent.setup();
+    render(<ArvorePerfil />);
+    const abrir = await screen.findByRole("button", { name: "Apagar rubrica" });
+    await user.click(abrir);
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", { name: "Apagar a rubrica" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(document.activeElement).toBe(abrir);
+    // Escapar nao apaga nada.
+    expect(api.apagarRubrica).not.toHaveBeenCalled();
+  });
 });
 
 // --- teclado ---------------------------------------------------------------------
@@ -218,6 +346,39 @@ describe("jornada por teclado", () => {
 
     await waitFor(() => {
       expect(api.assinarSolicitacao).toHaveBeenCalled();
+    });
+  });
+
+  it("recusa do inicio ao fim sem usar o mouse", async () => {
+    const user = userEvent.setup();
+    render(<ArvoreAssinar />);
+    await screen.findByRole("heading", { name: "Assinar documento" });
+
+    const abrir = screen.getByRole("button", { name: "Recusar assinatura" });
+    await user.tab();
+    while (document.activeElement !== abrir) {
+      await user.tab();
+      if (document.activeElement === document.body) break;
+    }
+    expect(document.activeElement).toBe(abrir);
+
+    await user.keyboard("{Enter}");
+    const dialogo = await screen.findByRole("dialog", { name: "Recusar a assinatura" });
+
+    // O foco cai no textarea: digitar o motivo nao exige nenhuma tabulacao.
+    expect(document.activeElement).toBe(within(dialogo).getByLabelText("Motivo"));
+    await user.keyboard("Valor divergente na clausula 4.");
+
+    const confirmar = within(dialogo).getByRole("button", { name: "Confirmar recusa" });
+    confirmar.focus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(api.recusarSolicitacao).toHaveBeenCalledWith(
+        "d-1",
+        "s-1",
+        "Valor divergente na clausula 4.",
+      );
     });
   });
 
@@ -298,6 +459,45 @@ describe("contraste dos tokens", () => {
   it("o acento institucional mantem 7:1 sobre branco, como documentado", () => {
     // A decisão registrada era 7:1 — segura até em texto pequeno.
     expect(contraste(tokens["--color-action"]!, "#ffffff")).toBeGreaterThanOrEqual(7);
+  });
+
+  /**
+   * Tokens que não carregam texto e por isso não entram em COMBINACOES. Cada um
+   * traz o motivo: a isenção é uma decisão registrada, não um esquecimento.
+   */
+  const SEM_TEXTO: Readonly<Record<string, string>> = {
+    "--color-border": "divisória decorativa; não identifica controle (1.4.11 não se aplica)",
+    "--color-border-strong": "borda de componente; verificada como não-texto a 3:1",
+    "--color-focus": "anel de foco; verificado como não-texto a 3:1",
+    "--color-action-hover": "estado transitório do mesmo link já coberto",
+    "--color-overlay": "escurecimento do fundo do modal; rgba, não carrega texto",
+  };
+
+  it.each([
+    ["--color-focus", "--color-background", "anel de foco sobre a página"],
+    ["--color-border-strong", "--color-surface", "borda de campo, canvas e modal"],
+  ])("%s sobre %s atende 3:1 para elemento nao textual — %s", (frente, fundo) => {
+    // WCAG 1.4.11: componente de interface e gráfico exigem 3:1, não 4.5:1.
+    expect(contraste(tokens[frente]!, tokens[fundo]!)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("a borda decorativa e a de componente sao tokens distintos", () => {
+    // Se voltarem a ser o mesmo valor, a distinção que sustenta a isenção acima
+    // deixou de existir e o teste de 3:1 passaria a mentir sobre as divisórias.
+    expect(tokens["--color-border"]).not.toBe(tokens["--color-border-strong"]);
+  });
+
+  it("todo token de cor esta coberto ou isento com motivo", () => {
+    const cobertos = new Set(COMBINACOES.flatMap(([frente, fundo]) => [frente, fundo]));
+    const declarados = Object.keys(tokens).filter((t) => t.startsWith("--color-"));
+
+    // Um token novo que ninguém aprovou nem isentou reprova aqui. É isto que
+    // impede a lista de combinações de envelhecer em silêncio.
+    const orfaos = declarados.filter(
+      (t) => !cobertos.has(t) && !(t in SEM_TEXTO),
+    );
+    expect(orfaos, `tokens sem combinação aprovada nem isenção: ${orfaos.join(", ")}`)
+      .toEqual([]);
   });
 });
 

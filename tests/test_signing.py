@@ -154,7 +154,13 @@ def test_signature_survives_the_owner_deleting_their_profile_rubric(
     assinatura = db_session.query(AppliedSignature).one()
 
     # The owner withdraws their rubric — a right they have at any time.
-    assert client.delete("/me/signature", headers=bruno).status_code == 204
+    # Retirar a rubrica exige a senha do titular, como assinar (GAP-007).
+    assert (
+        client.request(
+            "DELETE", "/me/signature", json={"password": SENHA}, headers=bruno
+        ).status_code
+        == 204
+    )
 
     db_session.expire_all()
     # The signature is untouched and its image is still there.

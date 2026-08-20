@@ -262,8 +262,22 @@ export function baixarRubrica(): Promise<{ blob: Blob; contentType: string }> {
   return requestBlob("/me/signature");
 }
 
-export function apagarRubrica(): Promise<void> {
-  return request("/me/signature", semConteudo, { method: "DELETE" });
+/**
+ * Retira a rubrica de perfil, confirmando com a senha do titular.
+ *
+ * A senha espelha o ato de assinar: uma sessao aberta em maquina destravada
+ * consegue clicar num botao, mas nao fornece uma senha que a pessoa nunca
+ * digitou. E a exclusao nao e reversivel — a imagem some.
+ *
+ * A senha viaja no corpo de um DELETE. A RFC 9110 diz que um cliente NAO
+ * DEVERIA gerar conteudo em DELETE e alguns intermediarios o descartam; aqui o
+ * unico proxy e o proprio Caddy, que repassa corpo em qualquer metodo.
+ */
+export function apagarRubrica(password: string): Promise<void> {
+  return request("/me/signature", semConteudo, {
+    method: "DELETE",
+    body: { password },
+  });
 }
 
 // --- assinatura ---------------------------------------------------------------

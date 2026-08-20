@@ -39,4 +39,10 @@ export default tseslint.config(
     files: ["src/data/**/*.{ts,tsx}"],
     rules: { "no-restricted-globals": "off" },
   },
+  {
+    // The E2E harness is not application code: it drives a real server from
+    // Node, outside the app, and preparing fixtures over HTTP is its job.
+    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    rules: { "no-restricted-globals": "off" },
+  },
 );

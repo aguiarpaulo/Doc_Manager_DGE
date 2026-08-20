@@ -1,0 +1,13 @@
+# E-mail de recusa entregue por um SMTP real (Mailpit)
+Data: 2026-08-19T17:39:46Z
+
+Mailpit em 127.0.0.1:1035 (SMTP) / :8035 (API). O SMTPEmailSender foi
+construido SEM usuario e SEM senha, reproduzindo o relay por IP allowlist.
+
+  mensagens recebidas: 2
+    De:       ged@exemplo.com
+    Para:     ana@exemplo.com
+    Assunto:  Assinatura recusada: Contrato principal
+    contem 'Contrato principal': True
+    contem 'bruno': True
+    contem 'Valor divergente na clausula 4.': True
