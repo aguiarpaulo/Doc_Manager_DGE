@@ -28,6 +28,9 @@ export default defineConfig({
     reportCompressedSize: true,
   },
   test: {
+    // Os specs do Playwright vivem em e2e/ e rodam com o proprio runner dele;
+    // sem esta exclusao o vitest tenta coleta-los e falha em test.describe.configure.
+    exclude: ["node_modules/**", "dist/**", "e2e/**"],
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

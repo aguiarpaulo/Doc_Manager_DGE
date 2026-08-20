@@ -1,0 +1,17 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/vitest/vitest.mjs",
+    "run",
+    "--root",
+    "frontend",
+    "-t",
+    "nao desenha a rubrica sobreposta"
+  ],
+  "exit_code": 0,
+  "stdout": "\n RUN  v4.1.10 C:/Projects/dge/Doc_Manager_DGE/frontend\n\n\n Test Files  1 passed | 18 skipped (19)\n      Tests  1 passed | 231 skipped (232)\n   Start at  15:19:50\n   Duration  32.92s (transform 2.83s, setup 14.05s, import 9.30s, tests 695ms, environment 55.76s)\n\n",
+  "stderr": "",
+  "created_at": "2026-08-19T18:20:23.647Z",
+  "artifacts": []
+}

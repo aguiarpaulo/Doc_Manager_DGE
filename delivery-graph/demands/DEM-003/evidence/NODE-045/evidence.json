@@ -1,0 +1,92 @@
+{
+  "node_id": "NODE-045",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t mostra o PDF pelo VisualizadorPdf reaproveitado passed",
+      "satisfies": "A tela de assinatura renderiza o PDF pelo VisualizadorPdf reaproveitado e nao por um componente novo",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "mostra o PDF pelo VisualizadorPdf reaproveitado"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:19:12.660Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t destaca a area marcada na pagina correspondente passed",
+      "satisfies": "A area marcada para o signatario e destacada na pagina correspondente antes de ele confirmar",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "destaca a area marcada na pagina correspondente"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:19:48.665Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t nao desenha a rubrica sobreposta passed",
+      "satisfies": "A rubrica NAO e desenhada sobreposta: o carimbo continua exclusivo do servidor (decisao do GAP-008)",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "nao desenha a rubrica sobreposta"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:20:23.650Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t documento que nao e PDF passed",
+      "satisfies": "Documento que nao e PDF continua mostrando nome versao e pagina sem quebrar a tela",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "documento que nao e PDF"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:20:59.137Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vite/bin/vite.js build frontend passed",
+      "satisfies": "pdfjs continua fora do chunk inicial, comprovado com a funcionalidade alcancavel pelo app (licao do NODE-035: com o componente inalcancavel o tree-shaking esconde a divisao e o relatorio mente)",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vite/bin/vite.js",
+        "build",
+        "frontend"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:21:20.073Z"
+    }
+  ]
+}

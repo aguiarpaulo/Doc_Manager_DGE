@@ -19,6 +19,7 @@ import { RotaProtegida } from "./features/auth/RotaProtegida.tsx";
 import { EscolherObra } from "./features/obras/EscolherObra.tsx";
 import { ObraShell } from "./features/obras/ObraShell.tsx";
 import { AssinarDocumentoPage } from "./features/assinatura/AssinarDocumentoPage.tsx";
+import { PerfilRubricaPage } from "./features/rubrica/PerfilRubricaPage.tsx";
 import { RegistroRubricaPage } from "./features/rubrica/RegistroRubricaPage.tsx";
 
 function NaoEncontrado() {
@@ -38,6 +39,9 @@ export function Rotas() {
       <Route element={<RotaProtegida />}>
         {/* Fora do guarda de rubrica por construcao: e para ca que ele redireciona. */}
         <Route path="/rubrica" element={<RegistroRubricaPage />} />
+        {/* Tambem fora do guarda: apagar a rubrica nao pode expulsar a pessoa
+            da tela onde ela acabou de apagar. */}
+        <Route path="/perfil/rubrica" element={<PerfilRubricaPage />} />
         <Route path="/" element={<EscolherObra />} />
         {/* A obra e o documento vivem na URL: a tela e compartilhavel e o F5
             restaura exatamente o que estava aberto. */}

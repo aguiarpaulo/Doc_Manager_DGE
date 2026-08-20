@@ -27,6 +27,20 @@ export interface UseApiDataResult<T> {
   readonly definirDados: (dados: T) => void;
 }
 
+/**
+ * Sinaliza "ainda nao ha o que buscar" sem inventar um erro.
+ *
+ * Uma busca que depende de um dado ainda nao carregado (a versao do documento,
+ * por exemplo) precisa dizer isso de alguma forma. Rejeitar seria mentir: a tela
+ * mostraria uma falha que nao aconteceu, e — pior — competiria com a falha de
+ * verdade que chega depois, deixando o alerta visivel a sorte de quem resolve
+ * primeiro. Uma promessa que nao se resolve mantem o estado em `loading`, que e
+ * literalmente a verdade. O efeito e abortado quando as dependencias mudam.
+ */
+export function aguardandoDependencia<T>(): Promise<T> {
+  return new Promise<T>(() => undefined);
+}
+
 /** Considera vazia uma lista sem itens; outros tipos nunca sao "empty". */
 function pareceVazio(dados: unknown): boolean {
   return Array.isArray(dados) && dados.length === 0;

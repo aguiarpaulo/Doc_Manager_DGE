@@ -18,6 +18,22 @@ import { AssinarDocumentoPage } from "./AssinarDocumentoPage.tsx";
 vi.mock("../../data/api.ts");
 const api = await import("../../data/api.ts");
 
+// O jsdom nao renderiza PDF; o que esta suite cobre e a logica da tela. Que a
+// pagina apareca desenhada e provado em navegador, no NODE-047.
+vi.mock("pdfjs-dist", () => ({
+  GlobalWorkerOptions: { workerSrc: "" },
+  getDocument: vi.fn(() => ({
+    promise: Promise.resolve({
+      numPages: 2,
+      getPage: () =>
+        Promise.resolve({
+          getViewport: () => ({ width: 595, height: 842 }),
+          render: () => ({ promise: Promise.resolve() }),
+        }),
+    }),
+  })),
+}));
+
 const BRUNO: Usuario = {
   id: "u-bruno",
   username: "bruno",
@@ -101,6 +117,10 @@ beforeEach(() => {
   vi.mocked(api.listarSolicitacoes).mockResolvedValue([PENDENCIA]);
   vi.mocked(api.listarAssinaturas).mockResolvedValue([]);
   vi.mocked(api.assinarSolicitacao).mockResolvedValue(ASSINATURA);
+  vi.mocked(api.baixarVersao).mockResolvedValue({
+    blob: new Blob([new Uint8Array([37, 80, 68, 70])], { type: "application/pdf" }),
+    contentType: "application/pdf",
+  });
 });
 
 // --- assinar --------------------------------------------------------------------------
@@ -307,5 +327,208 @@ describe("a senha", () => {
     await abrirModal();
 
     expect(screen.getByLabelText("Senha")).toHaveAttribute("type", "password");
+  });
+});
+
+// --- recusar ---------------------------------------------------------------------------
+
+async function abrirRecusa() {
+  const user = userEvent.setup();
+  render(<Arvore />);
+  await user.click(await screen.findByRole("button", { name: "Recusar assinatura" }));
+  return user;
+}
+
+describe("recusar", () => {
+  beforeEach(() => {
+    vi.mocked(api.recusarSolicitacao).mockResolvedValue({
+      ...PENDENCIA,
+      status: "recusada",
+      motivo: "Valor divergente na cláusula 4.",
+      encerrado_em: "2026-08-19T14:00:00Z",
+    });
+  });
+
+  it("envia o motivo informado e encerra a pendencia", async () => {
+    const user = await abrirRecusa();
+    await user.type(
+      screen.getByLabelText("Motivo"),
+      "Valor divergente na cláusula 4.",
+    );
+
+    vi.mocked(api.listarSolicitacoes).mockResolvedValue([
+      { ...PENDENCIA, status: "recusada", motivo: "Valor divergente na cláusula 4." },
+    ]);
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+
+    await waitFor(() => {
+      expect(api.recusarSolicitacao).toHaveBeenCalledWith(
+        "d-1",
+        "s-1",
+        "Valor divergente na cláusula 4.",
+      );
+    });
+    // A pendencia sai da tela: nao ha mais o que assinar nem recusar.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: "Recusar assinatura" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("exige motivo nao vazio antes de habilitar o envio", async () => {
+    const user = await abrirRecusa();
+
+    expect(screen.getByRole("button", { name: "Confirmar recusa" })).toBeDisabled();
+
+    // So espacos tambem nao vale: o solicitante ficaria sem nada em que agir.
+    await user.type(screen.getByLabelText("Motivo"), "   ");
+    expect(screen.getByRole("button", { name: "Confirmar recusa" })).toBeDisabled();
+
+    await user.type(screen.getByLabelText("Motivo"), "falta a ART");
+    expect(screen.getByRole("button", { name: "Confirmar recusa" })).toBeEnabled();
+  });
+
+  it("avisa que o motivo vai para a linha do tempo e para quem solicitou", async () => {
+    await abrirRecusa();
+
+    const dialogo = screen.getByRole("dialog");
+    expect(dialogo).toHaveTextContent(/linha do tempo/i);
+    expect(dialogo).toHaveTextContent(/enviado a quem solicitou/i);
+  });
+
+  it("mostra o erro da API sem apagar o texto ja digitado", async () => {
+    vi.mocked(api.recusarSolicitacao).mockRejectedValue(
+      new ApplicationError("Esta solicitação já está assinada.", "conflito", 409),
+    );
+    const user = await abrirRecusa();
+    await user.type(screen.getByLabelText("Motivo"), "documento incorreto");
+
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("já está assinada");
+    // Reescrever a justificativa seria punir quem ja explicou.
+    expect(screen.getByLabelText("Motivo")).toHaveValue("documento incorreto");
+  });
+
+  it("desabilita o envio durante a operacao, impedindo recusa duplicada", async () => {
+    let liberar: (v: SolicitacaoAssinatura) => void = () => {};
+    vi.mocked(api.recusarSolicitacao).mockReturnValue(
+      new Promise((resolve) => {
+        liberar = resolve;
+      }),
+    );
+    const user = await abrirRecusa();
+    await user.type(screen.getByLabelText("Motivo"), "motivo");
+
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+
+    expect(await screen.findByRole("button", { name: "Recusando..." })).toBeDisabled();
+    liberar(PENDENCIA);
+  });
+
+  it("nao oferece recusar a quem nao e o signatario indicado", async () => {
+    vi.mocked(api.listarSolicitacoes).mockResolvedValue([
+      { ...PENDENCIA, signatario_id: "outra-pessoa" },
+    ]);
+
+    render(<Arvore />);
+    await screen.findByText(/Não há assinatura pendente para você/);
+
+    expect(
+      screen.queryByRole("button", { name: "Recusar assinatura" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("o motivo some ao fechar e reabrir o dialogo", async () => {
+    const user = await abrirRecusa();
+    await user.type(screen.getByLabelText("Motivo"), "rascunho");
+
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+    await user.click(screen.getByRole("button", { name: "Recusar assinatura" }));
+
+    expect(screen.getByLabelText("Motivo")).toHaveValue("");
+  });
+});
+
+
+// --- o documento na tela ---------------------------------------------------------------
+
+describe("documento renderizado", () => {
+  it("mostra o PDF pelo VisualizadorPdf reaproveitado", async () => {
+    render(<Arvore />);
+
+    // A camada de marcacao so existe dentro do VisualizadorPdf: se ela esta ai,
+    // o componente foi reaproveitado e nao reescrito.
+    expect(
+      await screen.findByRole("application", { name: /Marcar área de assinatura/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("destaca a area marcada na pagina correspondente", async () => {
+    render(<Arvore />);
+    await screen.findByRole("application", { name: /página 2/i });
+
+    const area = screen.getByTestId("area-marcada");
+    // As mesmas fracoes que a solicitacao guardou, com origem no topo.
+    expect(area).toHaveStyle({ left: "20%", top: "60%", width: "30%", height: "10%" });
+  });
+
+  it("nao desenha a rubrica sobreposta: o carimbo e do servidor", async () => {
+    render(<Arvore />);
+    await screen.findByRole("application", { name: /Marcar área de assinatura/ });
+
+    // Nenhuma imagem de rubrica na camada — apenas o retangulo de destaque.
+    const area = screen.getByTestId("area-marcada");
+    expect(area.querySelector("img")).toBeNull();
+    expect(screen.queryByRole("img", { name: /rubrica/i })).not.toBeInTheDocument();
+  });
+
+  it("documento que nao e PDF mostra as informacoes sem quebrar a tela", async () => {
+    vi.mocked(api.baixarVersao).mockResolvedValue({
+      blob: new Blob(["dados"], { type: "application/vnd.ms-excel" }),
+      contentType: "application/vnd.ms-excel",
+    });
+
+    render(<Arvore />);
+
+    expect(await screen.findByTestId("sem-previa")).toBeInTheDocument();
+    // A tela continua utilizavel: assinar segue disponivel.
+    expect(screen.getByRole("button", { name: "Assinar documento" })).toBeInTheDocument();
+  });
+
+  it("nao mostra erro enquanto a versao do documento ainda e desconhecida", async () => {
+    // O download depende da versao, que so chega com o documento. Sinalizar essa
+    // espera com uma promessa rejeitada fazia a tela piscar "Falha inesperada ao
+    // carregar." em toda montagem — e disputar o alerta com a falha de verdade.
+    let liberar: (d: Documento) => void = () => undefined;
+    vi.mocked(api.obterDocumento).mockReturnValueOnce(
+      new Promise((resolve) => {
+        liberar = resolve;
+      }),
+    );
+
+    render(<Arvore />);
+
+    // Pelo texto, nao pelo papel: o guarda de sessao tambem usa role="status", e
+    // aqui o que importa e o indicador desta tela.
+    expect(await screen.findByText("Carregando documento...")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    liberar(DOCUMENTO);
+    await screen.findByRole("heading", { name: "Assinar documento" });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("distingue carga e falha ao baixar o documento", async () => {
+    vi.mocked(api.baixarVersao).mockRejectedValue(
+      new ApplicationError("Versão não encontrada", "nao-encontrado", 404),
+    );
+
+    render(<Arvore />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Versão não encontrada");
+    // Falhar em baixar o conteudo nao impede ver as informacoes do documento.
+    expect(screen.getByRole("heading", { name: "Assinar documento" })).toBeInTheDocument();
   });
 });

@@ -1,0 +1,95 @@
+{
+  "node_id": "NODE-044",
+  "items": [
+    {
+      "id": "EVD-001",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t nao oferece recusar a quem nao e o signatario indicado passed",
+      "satisfies": "O botao de recusar aparece somente para o signatario indicado da pendencia",
+      "artifact": "artifacts/EVD-001-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "nao oferece recusar a quem nao e o signatario indicado"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:16:06.094Z"
+    },
+    {
+      "id": "EVD-002",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t exige motivo nao vazio passed",
+      "satisfies": "Justificativa vazia ou so com espacos mantem o envio desabilitado e explica o motivo",
+      "artifact": "artifacts/EVD-002-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "exige motivo nao vazio"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:16:42.119Z"
+    },
+    {
+      "id": "EVD-003",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t recusar passed",
+      "satisfies": "Apos recusar a pendencia sai da tela e a etapa aparece na linha do tempo com o motivo",
+      "artifact": "artifacts/EVD-003-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "recusar"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:17:17.942Z"
+    },
+    {
+      "id": "EVD-004",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t sem apagar o texto ja digitado passed",
+      "satisfies": "O erro devolvido pela API e mostrado sem apagar o texto ja digitado",
+      "artifact": "artifacts/EVD-004-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "sem apagar o texto ja digitado"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:17:54.054Z"
+    },
+    {
+      "id": "EVD-005",
+      "kind": "command",
+      "summary": "node frontend/node_modules/vitest/vitest.mjs run --root frontend -t desabilita o envio durante a operacao passed",
+      "satisfies": "O botao fica desabilitado durante o envio impedindo recusa duplicada",
+      "artifact": "artifacts/EVD-005-command.json",
+      "command": [
+        "node",
+        "frontend/node_modules/vitest/vitest.mjs",
+        "run",
+        "--root",
+        "frontend",
+        "-t",
+        "desabilita o envio durante a operacao"
+      ],
+      "exit_code": 0,
+      "created_at": "2026-08-19T18:18:29.466Z"
+    }
+  ]
+}

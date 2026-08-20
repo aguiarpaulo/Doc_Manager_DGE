@@ -1,0 +1,16 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "frontend/node_modules/@playwright/test/cli.js",
+    "test",
+    "--config",
+    "frontend/playwright.config.ts",
+    "e2e/recusa-e-rubrica.spec.ts"
+  ],
+  "exit_code": 0,
+  "stdout": "\nRunning 7 tests using 1 worker\n\n  ok 1 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:152:3 › recusa de assinatura e exclusão da rubrica › preparação: obra, signatária e dois documentos com pendência (1.4s)\n  ok 2 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:237:3 › recusa de assinatura e exclusão da rubrica › registra a rubrica e assina o primeiro documento (6.8s)\n  ok 3 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:268:3 › recusa de assinatura e exclusão da rubrica › recusa o segundo documento com justificativa, e a etapa entra na linha do tempo (4.4s)\n  ok 4 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:299:3 › recusa de assinatura e exclusão da rubrica › o e-mail de recusa chega ao solicitante com o documento e o motivo (141ms)\n  ok 5 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:308:3 › recusa de assinatura e exclusão da rubrica › apaga a rubrica confirmando a senha, e a assinatura anterior segue intacta (4.3s)\n  ok 6 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:338:3 › recusa de assinatura e exclusão da rubrica › a assinatura anterior segue consultável e com a imagem intacta (3.6s)\n  ok 7 [chromium] › frontend\\e2e\\recusa-e-rubrica.spec.ts:360:3 › recusa de assinatura e exclusão da rubrica › depois de apagar, o guarda exige o registro de novo (1.6s)\n\n  7 passed (24.5s)\n",
+  "stderr": "",
+  "created_at": "2026-08-19T18:53:45.314Z",
+  "artifacts": []
+}

@@ -5,8 +5,8 @@
     "status": "draft",
     "source": "local",
     "created_at": "2026-07-03T17:52:13.967Z",
-    "updated_at": "2026-08-19T16:29:13.583Z",
-    "rev": 222
+    "updated_at": "2026-08-19T18:55:39.438Z",
+    "rev": 275
   },
   "demands": [
     {
@@ -59,6 +59,29 @@
         "Prazo de expiracao para solicitacao de assinatura",
         "Link magico que autentique o signatario sem login",
         "Ordem obrigatoria entre multiplos signatarios; assinaturas sao paralelas"
+      ]
+    },
+    {
+      "id": "DEM-003",
+      "title": "Lacunas de interface remanescentes do fluxo de assinatura",
+      "source": "Levantadas por mim durante a execucao da DEM-002 e confirmadas pelo Paulo em 2026-08-19",
+      "requester": "Paulo",
+      "problem": "A DEM-002 entregou o fluxo de assinatura completo (40 nos) mas deixou tres lacunas de interface que nenhum contrato de validacao cobria e que por isso nao apareceram como falha em nenhum no. Primeira: nao existe tela para trocar ou apagar a rubrica; baixarRubrica e apagarRubrica estao na fronteira de dados e GET/DELETE /me/signature existem na API desde o NODE-026 mas nada os chama pela interface -- ou seja o direito de exclusao decidido no GAP-004 so e exercivel por chamada direta a API. Segunda: recusar uma solicitacao nao tem interface; recusarSolicitacao existe na fronteira e o backend esta pronto desde o NODE-030 com justificativa obrigatoria mas o botao nunca foi criado. Terceira: quem assina nao ve o documento renderizado na tela de assinatura -- ve apenas nome versao e pagina -- o que e pouco para uma decisao de assinatura e foi registrado como divergencia de leitura no summary do NODE-036.",
+      "outcome": "As tres lacunas fechadas na SPA reaproveitando o que ja existe: uma tela de perfil onde o titular ve troca e apaga a propria rubrica; um botao de recusar com justificativa na tela de assinatura; e o VisualizadorPdf ja construido no NODE-035 reutilizado na tela de assinatura para que o signatario leia o documento antes de confirmar.",
+      "constraints": [
+        "O backend muda pouco e so onde a decisao do GAP-009 exige: um metodo novo no protocolo EmailSender com suas tres implementacoes e o disparo no endpoint de recusa. Nada de modelo nem de migracao",
+        "Reaproveitar o que ja existe em vez de construir de novo: VisualizadorPdf do NODE-035 (com pdfjs sob demanda) e Modal do NODE-036 (com trap de foco e campo de senha)",
+        "Arquitetura da SPA governada por docs/base-conhecimento-arquitetura-frontend-web.md: fronteira unica de dados + estados explicitos + WCAG AA + operacao por teclado",
+        "A tela de perfil so pode tocar a rubrica do proprio usuario; /me/signature nao aceita id de terceiro e essa propriedade estrutural nao deve ser afrouxada",
+        "Apagar a rubrica de perfil nunca pode alterar assinaturas ja aplicadas: cada uma guarda seu proprio snapshot desde o NODE-029",
+        "A falha de envio de e-mail nunca desfaz a recusa; mesma ordem ja adotada no NODE-028 e no NODE-031"
+      ],
+      "non_goals": [
+        "Qualquer mudanca de modelo de dados ou migracao",
+        "Notificacao de cancelamento feito pelo proprio solicitante; avisar quem cancelou e inutil",
+        "Interface de cancelamento de solicitacao pelo solicitante",
+        "Assinatura em tipos de arquivo alem de PDF",
+        "Desenhar a rubrica sobreposta ao PDF no cliente; o carimbo continua exclusivo do servidor"
       ]
     }
   ],
@@ -642,6 +665,114 @@
           "Teste de componente do painel cobrindo lista preenchida e estado vazio"
         ]
       }
+    },
+    {
+      "id": "REQ-033",
+      "demand_id": "DEM-003",
+      "statement": "O usuario pode ver trocar e apagar a propria rubrica numa tela de perfil",
+      "priority": "must",
+      "acceptance": [
+        "A tela mostra a rubrica registrada quando existe e um convite ao registro quando nao existe",
+        "Trocar a rubrica abre o mesmo canvas do primeiro acesso e substitui a anterior",
+        "Apagar exige confirmacao explicita e informa que assinaturas ja feitas continuam validas",
+        "Depois de apagar o guarda de rota volta a exigir o registro no proximo acesso a rota protegida",
+        "Nenhum caminho da tela aceita id de outro usuario"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente cobrindo ver / trocar / apagar / estado sem rubrica + teste de que a assinatura sobrevive a exclusao"
+        ]
+      }
+    },
+    {
+      "id": "REQ-034",
+      "demand_id": "DEM-003",
+      "statement": "O signatario pode recusar uma solicitacao informando a justificativa pela interface",
+      "priority": "must",
+      "acceptance": [
+        "O botao de recusar aparece so para quem e o signatario indicado da pendencia",
+        "Recusar exige justificativa nao vazia antes de habilitar o envio",
+        "Apos recusar a pendencia sai da tela e a etapa aparece na linha do tempo com o motivo",
+        "O erro devolvido pela API e mostrado sem perder o texto ja digitado"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente da recusa com justificativa vazia e preenchida + verificacao da etapa na linha do tempo"
+        ]
+      }
+    },
+    {
+      "id": "REQ-035",
+      "demand_id": "DEM-003",
+      "statement": "Quem assina le o documento renderizado na propria tela de assinatura antes de confirmar",
+      "priority": "must",
+      "acceptance": [
+        "A tela de assinatura mostra o PDF renderizado pelo VisualizadorPdf reaproveitado",
+        "A area marcada para o signatario e destacada na pagina correspondente",
+        "Documento que nao e PDF continua mostrando as informacoes textuais sem quebrar a tela",
+        "pdfjs continua fora do chunk inicial no relatorio de bundle"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de componente da tela de assinatura com PDF e com nao-PDF + relatorio de bundle mostrando o chunk separado"
+        ]
+      }
+    },
+    {
+      "id": "REQ-036",
+      "demand_id": "DEM-003",
+      "statement": "As tres telas permanecem operaveis por teclado e sem violacao de acessibilidade",
+      "priority": "should",
+      "acceptance": [
+        "A confirmacao de exclusao da rubrica usa o Modal com trap e restauracao de foco",
+        "A auditoria com axe nao acusa violacao nas telas alteradas",
+        "A jornada de recusa e concluida somente com teclado"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Execucao do axe sobre as telas novas + teste de jornada por teclado"
+        ]
+      }
+    },
+    {
+      "id": "REQ-037",
+      "demand_id": "DEM-003",
+      "statement": "O E2E existente e estendido para cobrir recusa e exclusao de rubrica contra o stack real",
+      "priority": "should",
+      "acceptance": [
+        "Um caso cobre recusar com justificativa e ver a etapa na linha do tempo",
+        "Um caso cobre apagar a rubrica e confirmar que a assinatura anterior segue consultavel",
+        "Nenhuma evidencia deste requisito e produzida com a fronteira HTTP simulada"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Relatorio do Playwright contra docker-compose.test.yml"
+        ]
+      }
+    },
+    {
+      "id": "REQ-038",
+      "demand_id": "DEM-003",
+      "statement": "A recusa notifica o solicitante por e-mail informando documento e motivo",
+      "priority": "must",
+      "acceptance": [
+        "Recusar envia exatamente um e-mail ao solicitante da assinatura",
+        "O corpo traz o nome do documento quem recusou e a justificativa informada",
+        "Falha de SMTP nao desfaz a recusa e e registrada em log",
+        "InMemoryEmailSender captura a mensagem em teste e ConsoleEmailSender a registra em desenvolvimento",
+        "Verificado contra um SMTP real e nao apenas com a fronteira simulada"
+      ],
+      "validation": {
+        "method": "automated-test",
+        "required_evidence": [
+          "Teste de API com InMemoryEmailSender + verificacao contra Mailpit real"
+        ]
+      }
     }
   ],
   "gaps": [
@@ -704,6 +835,36 @@
         "REQ-026"
       ],
       "resolution": "Resolvido: duas fases. O grafo tem um gargalo natural porque REQ-026 e REQ-031 nao dependem de nenhum requisito de assinatura enquanto todos os requisitos de assinatura dependem do REQ-027. Fase 1 entrega fundacao e paridade: REQ-027 entao REQ-018 entao REQ-026 entao REQ-031 com a SPA substituindo o Streamlit em producao sem funcionalidade nova. Fase 2 entrega o subsistema de assinatura: REQ-019 REQ-020 REQ-021 REQ-022 REQ-023 REQ-024 REQ-025 mais REQ-029 REQ-030 REQ-032 e o E2E completo do REQ-028. O requerente confirmou em 2026-08-15 que a assinatura nao e urgente o que torna aceitavel a fase 1 nao entregar funcionalidade nova ao usuario final."
+    },
+    {
+      "id": "GAP-007",
+      "type": "validation",
+      "severity": "major",
+      "question": "Apagar a rubrica deve exigir confirmacao por senha ou basta um dialogo de confirmacao? Assinar exige senha porque o ato precisa ser nao-repudiavel; apagar e o exercicio de um direito do titular sobre dado proprio e o argumento nao se transfere automaticamente. A escolha muda o desenho da tela de perfil.",
+      "blocks": [
+        "REQ-033"
+      ],
+      "resolution": "Resolvido: apagar a rubrica exige confirmacao por senha do titular. O argumento do nao-repudio nao se transferia automaticamente do ato de assinar mas o Paulo decidiu equipara-los: apagar a rubrica de perfil e uma acao sensivel o bastante para nao acontecer por uma sessao aberta em maquina destravada. Implica que a tela de perfil reaproveita o Modal com campo de senha ja construido no NODE-036 e que a API precisa aceitar a confirmacao -- ver a mudanca de escopo registrada junto ao GAP-009."
+    },
+    {
+      "id": "GAP-008",
+      "type": "scope",
+      "severity": "major",
+      "question": "A tela de assinatura deve destacar a area marcada sobre o PDF ou apenas renderizar o documento? Registrei essa divergencia de leitura no summary do NODE-036: o item falava em 'a rubrica aparece na area marcada' e eu entreguei o registro da assinatura com nome e horario, deixando o carimbo para o PDF baixado. Destacar a area e trabalho pequeno; desenhar a rubrica sobreposta duplicaria no cliente a logica de carimbo que ja existe no servidor.",
+      "blocks": [
+        "REQ-035"
+      ],
+      "resolution": "Resolvido: a tela de assinatura destaca a area marcada sobre o PDF renderizado mas NAO desenha a rubrica sobreposta. Destacar mostra ao signatario exatamente onde sua assinatura ficara antes de ele confirmar; desenhar a rubrica duplicaria no cliente a logica de carimbo que ja vive no servidor (NODE-033) e criaria duas fontes de verdade para a mesma posicao. O VisualizadorPdf ja aceita areaAtual e desenha o retangulo com borda tracejada -- e reaproveitamento direto."
+    },
+    {
+      "id": "GAP-009",
+      "type": "scope",
+      "severity": "warning",
+      "question": "Recusar deve notificar o solicitante por e-mail? Hoje nem recusa nem cancelamento notificam, e quem pediu so descobre olhando o documento. Registrei como melhoria obvia no NODE-030 mas deixei fora dos nao-objetivos desta demanda por ser decisao sua; se entrar, exige mudanca de backend e contradiz a restricao de que nada muda na API.",
+      "blocks": [
+        "REQ-034"
+      ],
+      "resolution": "Resolvido: recusar notifica o solicitante por e-mail. Isso muda o escopo da demanda: deixa de ser exclusivamente de interface e passa a exigir backend (novo metodo no protocolo EmailSender e suas tres implementacoes mais o disparo no endpoint de recusa). A restricao de 'nenhuma mudanca de backend' e o nao-objetivo correspondente foram removidos da demanda em vez de mantidos contradizendo a decisao. Cancelamento pelo proprio solicitante segue sem notificacao por ser inutil; cancelamento por administrador fica como pendencia nao coberta."
     }
   ],
   "tracks": [
@@ -733,6 +894,16 @@
       "id": "TRK-signature-ui",
       "title": "Assinatura - UI e E2E",
       "description": "Fase 2 frontend: visualizador PDF com marcacao de area + telas de rubrica e assinatura + E2E contra stack real"
+    },
+    {
+      "id": "TRK-lacunas-api",
+      "title": "Lacunas - API",
+      "description": "As duas mudancas de backend que as decisoes do intake exigiram: senha ao apagar a rubrica e e-mail de recusa"
+    },
+    {
+      "id": "TRK-lacunas-ui",
+      "title": "Lacunas - UI",
+      "description": "Tela de perfil da rubrica, recusa na interface, documento renderizado na tela de assinatura, acessibilidade e E2E"
     }
   ],
   "nodes": [
@@ -1801,6 +1972,194 @@
           "Relatorio do Playwright anexado como artefato de evidencia"
         ],
         "evidence_path": "delivery-graph/demands/DEM-002/evidence/NODE-040/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-041",
+      "title": "Confirmacao por senha ao apagar a rubrica (API)",
+      "type": "implementation",
+      "track": "TRK-lacunas-api",
+      "requirement_ids": [
+        "REQ-033"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "DELETE /me/signature passa a exigir a senha do titular e recusa com 403 quando ela esta errada",
+          "Senha errada nao apaga nada: a rubrica continua legivel e o objeto segue no armazenamento",
+          "A rota continua sem id de usuario; apagar a rubrica alheia segue inexprimivel e nao apenas proibido",
+          "Apagar nao altera nenhuma assinatura ja aplicada nem o snapshot que cada uma guarda",
+          "A senha nao aparece em log nem em nenhuma coluna gravada",
+          "pytest e ruff passam integralmente (licao do NODE-025: mudanca de contrato de endpoint exige a suite inteira e nao so o arquivo tocado)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-041/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-042",
+      "title": "E-mail de recusa ao solicitante (API)",
+      "type": "implementation",
+      "track": "TRK-lacunas-api",
+      "requirement_ids": [
+        "REQ-038"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Recusar envia exatamente um e-mail ao solicitante da assinatura e nenhum ao proprio signatario",
+          "O corpo traz nome do documento quem recusou e a justificativa informada",
+          "Falha de SMTP nao desfaz a recusa e e registrada em log (mesma ordem do NODE-028: envio depois do commit)",
+          "send_signature_declined existe nas tres implementacoes do protocolo EmailSender",
+          "Verificado contra um SMTP real (Mailpit) e nao apenas com InMemoryEmailSender (licao do NODE-015)",
+          "Nenhuma alteracao de modelo ou migracao foi introduzida"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-042/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-043",
+      "title": "Tela de perfil: ver trocar e apagar a propria rubrica",
+      "type": "implementation",
+      "track": "TRK-lacunas-ui",
+      "requirement_ids": [
+        "REQ-033"
+      ],
+      "depends_on": [
+        "NODE-041"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "A tela mostra a rubrica registrada quando existe e convida ao registro quando nao existe",
+          "Trocar abre o mesmo canvas do primeiro acesso e a nova rubrica substitui a anterior",
+          "Apagar exige senha no Modal reaproveitado do NODE-036 e informa que assinaturas ja feitas continuam validas",
+          "Depois de apagar o guarda de rota volta a exigir o registro na proxima rota protegida",
+          "Nenhuma chamada da tela envia id de usuario; a fronteira so usa /me/signature",
+          "Estados de carga vazio e erro sao distintos e acionaveis"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-043/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-044",
+      "title": "Recusar solicitacao com justificativa na tela de assinatura",
+      "type": "implementation",
+      "track": "TRK-lacunas-ui",
+      "requirement_ids": [
+        "REQ-034"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "O botao de recusar aparece somente para o signatario indicado da pendencia",
+          "Justificativa vazia ou so com espacos mantem o envio desabilitado e explica o motivo",
+          "Apos recusar a pendencia sai da tela e a etapa aparece na linha do tempo com o motivo",
+          "O erro devolvido pela API e mostrado sem apagar o texto ja digitado",
+          "O botao fica desabilitado durante o envio impedindo recusa duplicada"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-044/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-045",
+      "title": "Documento renderizado e area destacada na tela de assinatura",
+      "type": "implementation",
+      "track": "TRK-lacunas-ui",
+      "requirement_ids": [
+        "REQ-035"
+      ],
+      "depends_on": [],
+      "status": "done",
+      "validation": {
+        "required": [
+          "A tela de assinatura renderiza o PDF pelo VisualizadorPdf reaproveitado e nao por um componente novo",
+          "A area marcada para o signatario e destacada na pagina correspondente antes de ele confirmar",
+          "A rubrica NAO e desenhada sobreposta: o carimbo continua exclusivo do servidor (decisao do GAP-008)",
+          "Documento que nao e PDF continua mostrando nome versao e pagina sem quebrar a tela",
+          "pdfjs continua fora do chunk inicial, comprovado com a funcionalidade alcancavel pelo app (licao do NODE-035: com o componente inalcancavel o tree-shaking esconde a divisao e o relatorio mente)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-045/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-046",
+      "title": "Acessibilidade das telas alteradas",
+      "type": "test",
+      "track": "TRK-lacunas-ui",
+      "requirement_ids": [
+        "REQ-036"
+      ],
+      "depends_on": [
+        "NODE-043",
+        "NODE-044",
+        "NODE-045"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "A confirmacao de exclusao da rubrica move o foco para dentro do Modal prende Tab e restaura o foco ao fechar",
+          "A auditoria com axe nao acusa violacao na tela de perfil nem na tela de assinatura alterada",
+          "A jornada de recusa e concluida somente com teclado",
+          "Qualquer token de cor novo entra na lista de combinacoes aprovadas e atende WCAG AA pela formula (o axe nao verifica contraste sob jsdom)"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-046/"
+      },
+      "sync": {
+        "linear_issue_id": null,
+        "ado_task_id": null
+      }
+    },
+    {
+      "id": "NODE-047",
+      "title": "E2E estendido: recusa e exclusao de rubrica contra o stack real",
+      "type": "test",
+      "track": "TRK-lacunas-ui",
+      "requirement_ids": [
+        "REQ-037"
+      ],
+      "depends_on": [
+        "NODE-043",
+        "NODE-044",
+        "NODE-042"
+      ],
+      "status": "done",
+      "validation": {
+        "required": [
+          "Um caso recusa com justificativa em navegador e verifica a etapa na linha do tempo",
+          "O e-mail de recusa e lido do Mailpit e traz o documento e o motivo",
+          "Um caso apaga a rubrica confirmando a senha e verifica que a assinatura anterior segue consultavel e com sua imagem intacta",
+          "Depois de apagar a rubrica o guarda de rota exige o registro de novo em navegador",
+          "Nenhuma evidencia deste no e produzida com a fronteira HTTP simulada",
+          "Relatorio do Playwright anexado como artefato"
+        ],
+        "evidence_path": "delivery-graph/demands/DEM-003/evidence/NODE-047/"
       },
       "sync": {
         "linear_issue_id": null,

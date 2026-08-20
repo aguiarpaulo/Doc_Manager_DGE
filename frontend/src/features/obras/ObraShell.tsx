@@ -86,6 +86,7 @@ export function ObraShell() {
         <span className="shell__identidade">
           {usuario?.username} ({usuario?.role})
         </span>
+        <Link to="/perfil/rubrica">Minha rubrica</Link>
         {ehAdministrador && <Link to="/administracao">Administracao</Link>}
         <button type="button" onClick={sair}>
           Sair

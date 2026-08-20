@@ -22,6 +22,8 @@
 import { useCallback, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
 
+import "./modal.css";
+
 export interface ModalProps {
   readonly titulo: string;
   readonly aberto: boolean;

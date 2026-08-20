@@ -185,3 +185,30 @@ def make_pdf(paginas: int = 1, texto: str = "documento", tamanhos=None) -> bytes
 @pytest.fixture
 def pdf_factory():
     return make_pdf
+
+
+def make_png(cor: tuple[int, int, int] = (0, 0, 0), lado: int = 8) -> bytes:
+    """Um PNG real, porque o reportlab precisa conseguir decodificar a rubrica.
+
+    Bytes com assinatura de PNG mas sem estrutura valida passam pela validacao da
+    API (que so olha o content type) e so falham la na frente, ao carimbar.
+    """
+    import struct
+    import zlib
+
+    linhas = b"".join(b"\x00" + bytes(cor) * lado for _ in range(lado))
+
+    def bloco(tipo: bytes, dados: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(dados))
+            + tipo
+            + dados
+            + struct.pack(">I", zlib.crc32(tipo + dados) & 0xFFFFFFFF)
+        )
+
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + bloco(b"IHDR", struct.pack(">IIBBBBB", lado, lado, 8, 2, 0, 0, 0))
+        + bloco(b"IDAT", zlib.compress(linhas))
+        + bloco(b"IEND", b"")
+    )

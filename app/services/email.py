@@ -36,11 +36,23 @@ class EmailSender(Protocol):
         self, to_email: str, *, documento: str, motivo: str
     ) -> None: ...
 
+    def send_signature_declined(
+        self, to_email: str, *, documento: str, signatario: str, motivo: str
+    ) -> None: ...
+
 
 @dataclass
 class SentEmail:
     to_email: str
     token: str
+
+
+@dataclass
+class SentSignatureDeclined:
+    to_email: str
+    documento: str
+    signatario: str
+    motivo: str
 
 
 @dataclass
@@ -66,6 +78,7 @@ class InMemoryEmailSender:
         self.sent: list[SentEmail] = []
         self.signature_requests: list[SentSignatureRequest] = []
         self.signature_cancellations: list[SentSignatureCancelled] = []
+        self.signature_declines: list[SentSignatureDeclined] = []
 
     def send_password_reset(self, to_email: str, token: str) -> None:
         self.sent.append(SentEmail(to_email=to_email, token=token))
@@ -89,6 +102,19 @@ class InMemoryEmailSender:
     ) -> None:
         self.signature_cancellations.append(
             SentSignatureCancelled(to_email=to_email, documento=documento, motivo=motivo)
+        )
+
+
+    def send_signature_declined(
+        self, to_email: str, *, documento: str, signatario: str, motivo: str
+    ) -> None:
+        self.signature_declines.append(
+            SentSignatureDeclined(
+                to_email=to_email,
+                documento=documento,
+                signatario=signatario,
+                motivo=motivo,
+            )
         )
 
 
@@ -116,6 +142,18 @@ class ConsoleEmailSender:
     ) -> None:
         get_logger("email").info(
             "signature_cancelled", to_email=to_email, documento=documento, motivo=motivo
+        )
+
+
+    def send_signature_declined(
+        self, to_email: str, *, documento: str, signatario: str, motivo: str
+    ) -> None:
+        get_logger("email").info(
+            "signature_declined",
+            to_email=to_email,
+            documento=documento,
+            signatario=signatario,
+            motivo=motivo,
         )
 
 
@@ -210,6 +248,24 @@ class SMTPEmailSender:
             "receberá outra solicitação."
         )
         self._send(message, evento="signature_cancelled_send_failed", to_email=to_email)
+
+
+    def send_signature_declined(
+        self, to_email: str, *, documento: str, signatario: str, motivo: str
+    ) -> None:
+        message = EmailMessage()
+        message["Subject"] = f"Assinatura recusada: {documento}"
+        message["From"] = self.from_addr
+        message["To"] = to_email
+        message.set_content(
+            f"{signatario} recusou assinar um documento que você enviou para "
+            "assinatura no GED DGE.\n\n"
+            f"Documento: {documento}\n"
+            f"Motivo informado: {motivo}\n\n"
+            "A solicitação foi encerrada. Se o documento for corrigido, será "
+            "preciso solicitar a assinatura novamente."
+        )
+        self._send(message, evento="signature_declined_send_failed", to_email=to_email)
 
 
 def validate_email_config(settings: Settings | None = None) -> None:

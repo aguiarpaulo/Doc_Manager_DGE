@@ -302,3 +302,116 @@ def test_a_refused_request_frees_a_new_one_for_the_same_person(
     )
 
     assert segunda.status_code == 201
+
+
+# --- notificacao ao solicitante -------------------------------------------------------
+
+
+def test_declining_notifies_the_requester_and_nobody_else(
+    client, make_user, make_obra, make_document, headers_for, email_sender
+):
+    autor, _, documento, _, bruno, pedido = _preparar(
+        client, make_user, make_obra, make_document, headers_for
+    )
+    email_sender.signature_declines.clear()
+
+    _recusar(client, bruno, documento.id, pedido["id"])
+
+    # Exatamente um e-mail, para quem pediu a assinatura.
+    assert len(email_sender.signature_declines) == 1
+    enviado = email_sender.signature_declines[0]
+    assert enviado.to_email == autor.email
+    # E nenhum para o proprio signatario, que ja sabe o que fez.
+    assert all(e.to_email != "bruno@example.com" for e in email_sender.signature_declines)
+
+
+def test_the_refusal_email_carries_document_signer_and_reason(
+    client, make_user, make_obra, make_document, headers_for, email_sender
+):
+    _, _, documento, _, bruno, pedido = _preparar(
+        client, make_user, make_obra, make_document, headers_for
+    )
+    email_sender.signature_declines.clear()
+
+    _recusar(client, bruno, documento.id, pedido["id"], motivo="Valor divergente na cláusula 4.")
+
+    enviado = email_sender.signature_declines[0]
+    assert enviado.documento == "Contrato principal"
+    assert enviado.signatario == "bruno"
+    assert enviado.motivo == "Valor divergente na cláusula 4."
+
+
+def test_no_email_when_the_refusal_is_refused(
+    client, make_user, make_obra, make_document, headers_for, email_sender
+):
+    _, _, documento, ana, _, pedido = _preparar(
+        client, make_user, make_obra, make_document, headers_for
+    )
+    email_sender.signature_declines.clear()
+
+    # A solicitante nao e a signataria: 403.
+    assert _recusar(client, ana, documento.id, pedido["id"]).status_code == 403
+
+    assert email_sender.signature_declines == []
+
+
+def test_smtp_failure_does_not_undo_the_refusal(
+    client, db_session, make_user, make_obra, make_document, headers_for
+):
+    from app.services.email import SMTPEmailSender, get_email_sender
+
+    _, _, documento, _, bruno, pedido = _preparar(
+        client, make_user, make_obra, make_document, headers_for
+    )
+
+    # Servidor que recusa a conexao.
+    sender = SMTPEmailSender(
+        host="127.0.0.1",
+        port=1,
+        user="",
+        password="",
+        from_addr="ged@example.com",
+        starttls=False,
+        reset_url_base="https://ged.example.com/redefinir-senha",
+    )
+    client.app.dependency_overrides[get_email_sender] = lambda: sender
+
+    resposta = _recusar(client, bruno, documento.id, pedido["id"])
+
+    # A recusa vale de qualquer forma: perder o aviso e recuperavel.
+    assert resposta.status_code == 200
+    db_session.expire_all()
+    assert db_session.query(SignatureRequest).one().status is SignatureRequestStatus.RECUSADA
+
+
+def test_the_console_sender_logs_the_refusal_in_development():
+    from app.services.email import ConsoleEmailSender
+
+    # Nao deve levantar: e o caminho de desenvolvimento, sem SMTP configurado.
+    ConsoleEmailSender().send_signature_declined(
+        "ana@example.com", documento="Contrato", signatario="bruno", motivo="motivo"
+    )
+
+
+def test_no_model_or_migration_was_introduced():
+    """A demanda proibe mudanca de modelo; este no so acrescenta um e-mail.
+
+    Afirma que a cabeca do alembic nao se moveu, em vez de contar arquivos: uma
+    contagem fixa quebra a cada migracao futura sem dizer nada de util.
+    """
+    import pathlib
+    import re
+
+    revisoes, anteriores = set(), set()
+    for arquivo in pathlib.Path("alembic/versions").glob("*.py"):
+        texto = arquivo.read_text(encoding="utf-8")
+        atual = re.search(r"^revision(?::\s*str)?\s*=\s*[\"']([^\"']+)", texto, re.M)
+        anterior = re.search(r"^down_revision(?::[^=]+)?\s*=\s*[\"']([^\"']+)", texto, re.M)
+        if atual:
+            revisoes.add(atual.group(1))
+        if anterior:
+            anteriores.add(anterior.group(1))
+
+    cabeca = revisoes - anteriores
+    # A ultima migracao da DEM-002 continua sendo a cabeca.
+    assert cabeca == {"e5f6a7b8c9d0"}

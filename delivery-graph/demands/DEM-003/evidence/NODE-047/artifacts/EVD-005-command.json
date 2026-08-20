@@ -1,0 +1,13 @@
+{
+  "kind": "command",
+  "command": [
+    "node",
+    "-e",
+    "const fs=require('fs');const d='frontend/e2e';const proibido=/vi\\.mock|jest\\.mock|msw|mockResolvedValue|nock/;let mal=[];for(const f of fs.readdirSync(d)){const t=fs.readFileSync(d+'/'+f,'utf8');if(proibido.test(t))mal.push(f);if(!/@playwright\\/test/.test(t))mal.push(f+' (nao usa Playwright)');}if(mal.length){console.error('specs com fronteira simulada:',mal.join(', '));process.exit(1);}console.log('nenhum mock em '+d+': todos os specs falam com o stack real');"
+  ],
+  "exit_code": 0,
+  "stdout": "nenhum mock em frontend/e2e: todos os specs falam com o stack real\n",
+  "stderr": "",
+  "created_at": "2026-08-19T18:54:59.537Z",
+  "artifacts": []
+}

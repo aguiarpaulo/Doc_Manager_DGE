@@ -67,34 +67,8 @@
   color: var(--color-text-secondary);
 }
 
-.modal__fundo {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: var(--space-3);
-  /* O fundo escurecido é o único uso de cor fora dos tokens semânticos, e vem
-     de um token próprio para não virar valor literal espalhado. */
-  background: var(--color-overlay);
-  z-index: 10;
-}
-
-.modal {
-  width: min(32rem, 100%);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  border: var(--border-width) solid var(--color-border);
-}
-
-.modal h2 {
-  margin-top: 0;
-}
-
-.modal__acoes {
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
+/* As regras do Modal saíram daqui para `components/ui/modal.css`, junto do
+   componente que elas estilizam. */
 
 .pendencias {
   padding: var(--space-3);
@@ -116,4 +90,10 @@
 .pendencias__vazio {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
+}
+
+.assinar__acoes {
+  display: flex;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
 }
