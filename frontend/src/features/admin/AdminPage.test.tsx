@@ -184,6 +184,28 @@ describe("gestao de usuarios", () => {
 });
 
 describe("acesso as obras", () => {
+  it("nao anuncia 'crie uma obra' enquanto as listas ainda carregam", async () => {
+    comSessao(ADMIN);
+    let liberar: (obras: Obra[]) => void = () => undefined;
+    vi.mocked(api.listarObras).mockReturnValueOnce(
+      new Promise((resolve) => {
+        liberar = resolve;
+      }),
+    );
+    render(<Arvore />);
+
+    await screen.findByRole("heading", { name: "Acesso as obras" });
+    // Vazio por ainda nao ter resposta nao e vazio de verdade: dizer "crie uma
+    // obra" aqui afirmaria algo falso para quem tem dezenas delas.
+    expect(screen.queryByText(/Crie uma obra para poder atribuir/)).not.toBeInTheDocument();
+
+    liberar([OBRA]);
+
+    expect(
+      await screen.findByLabelText("Usuario", { selector: "#acesso-usuario" }),
+    ).toBeInTheDocument();
+  });
+
   it("concede e remove acesso de um usuario a uma obra", async () => {
     comSessao(ADMIN);
     vi.mocked(api.atribuirUsuarioAObra).mockResolvedValue(undefined);
@@ -192,6 +214,8 @@ describe("acesso as obras", () => {
 
     const user = userEvent.setup();
     await screen.findByRole("heading", { name: "Acesso as obras" });
+    // Espera as listas chegarem: os selects so existem depois delas.
+    await screen.findByLabelText("Usuario", { selector: "#acesso-usuario" });
     await user.selectOptions(screen.getByLabelText("Usuario", { selector: "#acesso-usuario" }), "u-eng");
     await user.selectOptions(screen.getByLabelText("Obra"), "o-1");
 

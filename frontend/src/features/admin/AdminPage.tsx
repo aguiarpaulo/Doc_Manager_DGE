@@ -21,7 +21,7 @@ import { Link } from "react-router-dom";
 import * as api from "../../data/api.ts";
 import type { Obra, Papel, Usuario } from "../../data/contracts.ts";
 import { ApplicationError } from "../../data/errors.ts";
-import { useApiData } from "../../data/useApiData.ts";
+import { aguardandoDependencia, useApiData } from "../../data/useApiData.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
 
 /** Mesma regra de app/usernames.py, exibida como ajuda no formulario. */
@@ -38,17 +38,29 @@ const PAPEIS: readonly Papel[] = [
 export function AdminPage() {
   const { usuario, ehAdministrador } = useAuth();
 
-  const buscarUsuarios = useCallback((s: AbortSignal) => api.listarUsuarios(s), []);
-  const usuarios = useApiData<Usuario[]>(buscarUsuarios, []);
+  // Os hooks correm antes do guarda de papel — é a regra dos hooks — então quem
+  // não é administrador chegaria a disparar as três chamadas só para colher três
+  // 403 e descartá-los. A dependência que falta aqui é a autorização.
+  const buscarUsuarios = useCallback(
+    (s: AbortSignal) =>
+      ehAdministrador ? api.listarUsuarios(s) : aguardandoDependencia<Usuario[]>(),
+    [ehAdministrador],
+  );
+  const usuarios = useApiData<Usuario[]>(buscarUsuarios, [ehAdministrador]);
 
-  const buscarObras = useCallback((s: AbortSignal) => api.listarObras(s), []);
-  const obras = useApiData<Obra[]>(buscarObras, []);
+  const buscarObras = useCallback(
+    (s: AbortSignal) =>
+      ehAdministrador ? api.listarObras(s) : aguardandoDependencia<Obra[]>(),
+    [ehAdministrador],
+  );
+  const obras = useApiData<Obra[]>(buscarObras, [ehAdministrador]);
 
   const buscarArquivadas = useCallback(
-    (s: AbortSignal) => api.listarObras(s, true),
-    [],
+    (s: AbortSignal) =>
+      ehAdministrador ? api.listarObras(s, true) : aguardandoDependencia<Obra[]>(),
+    [ehAdministrador],
   );
-  const arquivadas = useApiData<Obra[]>(buscarArquivadas, []);
+  const arquivadas = useApiData<Obra[]>(buscarArquivadas, [ehAdministrador]);
 
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -446,12 +458,20 @@ function BlocoAcessos({
   const listaUsuarios =
     usuarios.estado.status === "success" ? usuarios.estado.data : [];
   const listaObras = obras.estado.status === "success" ? obras.estado.data : [];
+  const carregandoListas =
+    usuarios.estado.status === "loading" || obras.estado.status === "loading";
 
   return (
     <section aria-labelledby="titulo-acessos">
       <h2 id="titulo-acessos">Acesso as obras</h2>
 
-      {listaObras.length === 0 ? (
+      {/* Carga e vazio sao estados diferentes. Enquanto as listas chegam,
+          `listaObras` esta vazia por ainda nao ter resposta — e anunciar "crie uma
+          obra" nesse instante afirma algo que pode ser falso, para um administrador
+          que tem dezenas delas. */}
+      {carregandoListas ? (
+        <p role="status">Carregando usuarios e obras...</p>
+      ) : listaObras.length === 0 ? (
         <p>Crie uma obra para poder atribuir acessos.</p>
       ) : (
         <>
