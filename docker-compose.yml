@@ -43,6 +43,10 @@ services:
       GED_MINIO_SECURE: "false"
       GED_BOOTSTRAP_ADMIN_EMAIL: ${GED_BOOTSTRAP_ADMIN_EMAIL:-}
       GED_BOOTSTRAP_ADMIN_PASSWORD: ${GED_BOOTSTRAP_ADMIN_PASSWORD:-}
+      # Vazio por padrao: producao serve SPA e API pela mesma origem (Caddy), entao
+      # nao ha chamada cruzada a autorizar. So preencher para apontar o servidor de
+      # desenvolvimento do Vite (:5173) direto para esta API.
+      GED_CORS_ORIGINS: ${GED_CORS_ORIGINS:-}
     ports:
       - "8000:8000"
     depends_on:

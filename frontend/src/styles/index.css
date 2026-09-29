@@ -134,6 +134,45 @@ textarea {
   padding: var(--space-1) var(--space-2);
 }
 
+/* Empilhamento de formulario: rotulo acima, campo abaixo, ajuda logo em seguida.
+   Sem isto, rotulo e campo sao ambos inline e quebram onde couber -- na tela de
+   administracao o rotulo "Confirmar senha" ficava numa linha e o seu campo em
+   outra, e o texto de ajuda do usuario colava no rotulo "E-mail".
+
+   Escopado a `form` e ao dialogo de proposito: o seletor de obra do cabecalho e o
+   par usuario/obra do bloco de acesso sao linhas inline por desenho, e empilha-los
+   quebraria o cabecalho. */
+form label,
+.modal label {
+  display: block;
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-1);
+  font-weight: 600;
+}
+
+form input,
+form select,
+form textarea,
+.modal input,
+.modal select,
+.modal textarea {
+  display: block;
+  /* Campo de formulario nao precisa da largura toda da tela para ser usavel, e
+     uma linha muito longa e mais dificil de ler do que de preencher. */
+  width: 100%;
+  max-width: 30rem;
+}
+
+form small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+}
+
+form button {
+  margin-top: var(--space-3);
+}
+
 /* O foco visivel nunca e removido sem substituto melhor. */
 :focus-visible {
   outline: 2px solid var(--color-focus);

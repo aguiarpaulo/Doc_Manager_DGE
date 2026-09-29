@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.documents import router as documents_router
@@ -22,6 +23,19 @@ def create_app() -> FastAPI:
 
     logger = get_logger("app.startup")
     logger.info("app_initialized", app_name=settings.app_name, environment=settings.environment)
+
+    # Só quando alguém nomeia as origens. Em produção a SPA vem do mesmo Caddy que
+    # esta API, então não existe chamada cruzada para autorizar; o servidor de
+    # desenvolvimento é que roda noutro endereço e precisa ser declarado.
+    if settings.cors_origins:
+        logger.info("cors_enabled", origins=settings.cors_origins)
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     app.include_router(health_router)
     app.include_router(auth_router)

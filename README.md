@@ -33,7 +33,7 @@ Isso cria o ambiente virtual em `.venv/`.
 
 ## Rodar os testes ✅
 
-É a forma principal de verificar o sistema. São ~70 testes que **não precisam de
+É a forma principal de verificar o sistema. São ~256 testes que **não precisam de
 Docker, Postgres nem MinIO** — o `tests/conftest.py` substitui banco, armazenamento e
 e-mail por versões em memória.
 
@@ -44,11 +44,16 @@ uv run pytest tests/test_auth.py    # só um arquivo
 uv run pytest -k login              # só testes cujo nome contém "login"
 ```
 
-Cada arquivo em `tests/` cobre uma área: `test_auth`, `test_users`, `test_obras`,
-`test_documents`, `test_uploads`, `test_versioning`, `test_approval`, `test_mfa`,
-`test_password_reset`, `test_search`, `test_soft_delete`, `test_audit`,
-`test_observability`, `test_scaffold`, `test_bootstrap_admin`,
-`test_container_build`, `test_operational_scripts`.
+Cada arquivo em `tests/` cobre uma área. Núcleo de documentos: `test_auth`,
+`test_users`, `test_obras`, `test_documents`, `test_uploads`, `test_versioning`,
+`test_approval`, `test_mfa`, `test_password_reset`, `test_search`,
+`test_soft_delete`, `test_audit`, `test_document_timeline`. Assinatura e rubrica:
+`test_signatures`, `test_signature_requests`, `test_signing`,
+`test_signature_decline_cancel`, `test_signature_request_email`,
+`test_new_version_cancels_requests`, `test_pdf_stamp`, `test_email`. Infra e
+operação: `test_observability`, `test_scaffold`, `test_bootstrap_admin`,
+`test_container_build`, `test_operational_scripts`, `test_cors`,
+`test_storage_minio_live`, `test_delivery_graph`.
 
 Os três últimos protegem o caminho do Docker, que o resto da suíte não exercita: eles
 checam o artefato que sobe no container (o entrypoint precisa ter fim de linha LF, senão
@@ -153,6 +158,20 @@ O Vite sobe em `http://localhost:5173`. A SPA acha a API por `VITE_API_BASE_URL`
 $env:VITE_API_BASE_URL = "http://localhost:8000"; npm run dev
 ```
 
+> **Atenção — CORS.** A SPA em `:5173` e a API em `:8000`/`:8080` são origens
+> diferentes. Sem autorização explícita o navegador barra toda chamada no
+> preflight e a tela de login mostra "Não foi possível falar com o servidor".
+> Defina `GED_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173` — no
+> `.env` (Opção A e B) ou como variável de ambiente antes de `uv run uvicorn`
+> (Opção B lê o `.env` diretamente, sem precisar reiniciar o Docker). Em
+> produção a variável fica vazia: lá o Caddy serve a SPA e a API na mesma
+> origem, então não existe chamada cruzada a autorizar.
+>
+> **Caminho mais rápido para só rodar a SPA localmente:** suba
+> `docker-compose.test.yml` (ver [Testes de ponta a ponta](#testes-de-ponta-a-ponta-e2e)
+> abaixo) — ele já publica a API em `:8080` com `GED_CORS_ORIGINS` liberado
+> para `:5173`, então basta `VITE_API_BASE_URL=http://localhost:8080/api npm run dev`.
+
 Comandos do frontend:
 
 ```powershell
@@ -219,7 +238,64 @@ demais papéis não veem a aba.
 
 **Cadastrar:** obra, usuário, e conceder a um usuário acesso a uma obra.
 
-**Remover e editar:**
+##### Cadastrar e remover um usuário
+
+**Pela interface**, na aba Administração: preencha usuário, e-mail, senha (**duas
+vezes** — as duas precisam bater antes de a chamada à API acontecer) e o papel, e
+clique em "Criar usuário". A ação de remoção na tabela de usuários é **desativar**,
+não apagar — ver por quê logo abaixo.
+
+**Pela API**, com o token de um administrador:
+
+```powershell
+uv run python - <<'PY'
+import json, urllib.request
+
+BASE = "http://localhost:8000"
+
+def chamar(caminho, corpo, token, metodo="POST"):
+    req = urllib.request.Request(
+        f"{BASE}{caminho}",
+        data=json.dumps(corpo).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method=metodo,
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+token = json.loads(urllib.request.urlopen(
+    urllib.request.Request(
+        f"{BASE}/auth/login",
+        data=json.dumps({"username": "admin", "password": "SUA_SENHA"}).encode(),
+        headers={"Content-Type": "application/json"},
+    ),
+    timeout=30,
+).read())["access_token"]
+
+# Cadastrar — POST /users. role: administrador | diretor | engenheiro | financeiro
+novo = chamar("/users", {
+    "username": "novo.usuario",
+    "email": "novo.usuario@empresa.com",
+    "password": "senha-forte-o-bastante",
+    "role": "engenheiro",
+}, token)
+print("criado:", novo["id"], novo["username"])
+
+# "Remover" — PATCH /users/{id} com is_active: false. Não existe DELETE /users/{id}.
+chamar(f"/users/{novo['id']}", {"is_active": False}, token, metodo="PATCH")
+print("desativado:", novo["username"])
+PY
+```
+
+**Não existe endpoint `DELETE /users/{id}`, de propósito.** `documents.criado_por` e
+`audit_logs.actor_id` referenciam `users.id` sem `ON DELETE`, e o próprio
+`/auth/login` grava uma linha de auditoria — então apagar de verdade um usuário que
+já entrou uma vez violaria integridade referencial ou destruiria a trilha, que é
+imutável por contrato. `PATCH /users/{id}` com `is_active: false` é a forma
+suportada de "remover": tira o login na hora e **preserva** autoria de documentos,
+auditoria e vínculos com obras — reativar (`is_active: true`) devolve tudo.
+
+**Remover e editar (visão geral):**
 
 | Ação | O que acontece de fato |
 | --- | --- |
@@ -228,13 +304,10 @@ demais papéis não veem a aba.
 | Desativar / reativar usuário | `is_active`. Tira o login imediatamente e **preserva** autoria dos documentos, trilha de auditoria e vínculos com obras. Reativar devolve tudo. |
 | Arquivar / restaurar obra | `is_deleted` na obra. Ela sai das listagens de todo mundo e deixa de aceitar documentos novos; documentos, arquivos no MinIO e vínculos ficam intactos e voltam ao restaurar. |
 
-Nada é apagado do banco por essas ações, e isso é deliberado: `documents.criado_por` e
-`audit_logs.actor_id` referenciam `users.id` sem `ON DELETE`, e o `/auth/login` grava
-auditoria — então apagar um usuário que já entrou uma vez violaria integridade
-referencial ou destruiria a trilha, que é imutável por contrato. Arquivar obra em vez de
-apagar evita o outro lado do problema: `documents.obra_id` tem `ON DELETE CASCADE`, então
-um `DELETE` na obra apagaria os documentos em silêncio e deixaria os arquivos órfãos no
-MinIO, que nenhum código remove.
+Nada é apagado do banco por essas ações — a razão para usuário está acima; para obra
+é o espelho: `documents.obra_id` tem `ON DELETE CASCADE`, então um `DELETE` real na
+obra apagaria os documentos em silêncio e deixaria os arquivos órfãos no MinIO, que
+nenhum código remove. Arquivar (`is_deleted`) evita isso.
 
 Obra arquivada some via [app/scope.py](app/scope.py), o funil por onde toda query de
 obra e documento passa — inclusive para `administrador` e `diretor`, que têm acesso
@@ -269,6 +342,33 @@ não sai da fronteira de dados.
 
 ---
 
+## Testes de ponta a ponta (E2E)
+
+`frontend/e2e/` tem quatro jornadas Playwright que rodam em navegador real (Chromium)
+contra o stack inteiro — Caddy servindo a SPA já compilada, FastAPI, PostgreSQL, MinIO
+e Mailpit. **Nada aqui é simulado.** É o mesmo `docker-compose.test.yml` que serve para
+só levantar a SPA localmente (ver nota de CORS acima).
+
+```powershell
+docker compose -f docker-compose.test.yml -p gede2e up -d --build
+cd frontend
+npx playwright test                          # todas as jornadas
+npx playwright test e2e/leitura-de-pdf.spec.ts  # uma só
+docker compose -f docker-compose.test.yml -p gede2e down -v   # desligar
+```
+
+Não há `webServer` na configuração do Playwright de propósito: o alvo é a SPA
+**construída**, como em produção, não o `vite dev`. As quatro jornadas:
+
+| Arquivo | O que prova |
+| --- | --- |
+| `jornada-de-assinatura.spec.ts` | Login → marcar área no PDF → e-mail no Mailpit → assinar com senha → linha do tempo → PDF carimbado baixado |
+| `recusa-e-rubrica.spec.ts` | Recusar assinatura com justificativa; apagar a rubrica sem invalidar assinatura já feita |
+| `recuperacao-de-senha.spec.ts` | Pedir redefinição → link do e-mail abre a tela → senha nova entra, a antiga não |
+| `leitura-de-pdf.spec.ts` | O documento é **desenhado** na tela (conta pixels), não só que os elementos existem |
+
+Só há um navegador configurado (Chromium) e nada roda em CI — são manuais.
+
 ## Verificação rápida (smoke tests)
 
 Checagens manuais de que a infra está viva (rode com os serviços no ar):
@@ -280,8 +380,10 @@ uv run python scripts/smoke_minio_persistence.py   # o armazenamento funciona?
 
 O endpoint `/health` também retorna o status do banco e do armazenamento em JSON.
 
-A jornada da interface é verificada de duas formas, ambas **sem mock**:
+A jornada da interface é verificada de três formas, todas **sem mock**:
 
+- Os specs Playwright acima — os únicos que provam algo desenhado na tela (um
+  traço no canvas, um PDF renderizado, um retângulo arrastado com o mouse).
 - `frontend/src/data/*.integration.test.ts` — roda a fronteira de dados real
   contra a API de pé (`GED_LIVE_API=1`). Cobre login, ciclo de vida de documento
   com MinIO real e as regras administrativas.
@@ -331,6 +433,7 @@ A API lê variáveis com prefixo `GED_` (do arquivo `.env`). Ver `app/config.py`
 | `GED_BOOTSTRAP_ADMIN_USERNAME` | Login do administrador inicial | (derivado do e-mail)                     |
 | `GED_BOOTSTRAP_ADMIN_EMAIL`    | E-mail do administrador inicial | (vazio — pula o bootstrap)              |
 | `GED_BOOTSTRAP_ADMIN_PASSWORD` | Senha do administrador inicial (mín. 12 caracteres) | (vazio)   |
+| `GED_CORS_ORIGINS`     | Origens liberadas para chamar a API de outro endereço, separadas por vírgula | (vazio — nenhuma) |
 
 `GED_MINIO_ACCESS_KEY` e `GED_MINIO_SECRET_KEY` são o **único** par de nomes para a
 credencial do MinIO: o compose entrega esses valores ao servidor MinIO como credencial
@@ -386,8 +489,12 @@ os demais aparecem com botão de download.
 - **Sem CI.** Não há `.github/workflows/` — `pytest` e `ruff` precisam ser rodados
   manualmente antes de cada commit.
 - **Sem medição de cobertura de testes** (`pytest-cov` não está configurado).
-- **Sem testes de ponta a ponta automáticos** contra Postgres/MinIO reais — os testes
-  usam versões em memória; os scripts de smoke são manuais.
+- **A suíte de ponta a ponta existe mas é manual e Chromium-only.** Os quatro specs em
+  `frontend/e2e/` (ver [Testes de ponta a ponta](#testes-de-ponta-a-ponta-e2e)) rodam
+  contra Postgres/MinIO/Mailpit reais, mas alguém precisa subir o
+  `docker-compose.test.yml` e rodar `npx playwright test` à mão — nada dispara isso
+  sozinho. A suíte do `pytest` continua usando versões em memória, e os scripts de
+  smoke seguem manuais também.
 
 ---
 

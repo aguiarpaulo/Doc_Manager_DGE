@@ -95,30 +95,47 @@ export function PainelDocumento({ documentoId }: { documentoId: string }) {
           <p role="alert">{conteudo.estado.error.message}</p>
         )}
 
-        {conteudo.estado.status === "success" && (
-          <>
-            <VisualizadorConteudo
-              nome={atual.nome}
-              blob={conteudo.estado.data.blob}
-              contentType={conteudo.estado.data.contentType}
-            />
-
-            {/* Solicitar assinatura e do autor, do administrador ou do diretor —
-                a regra e do servidor; aqui so evitamos oferecer o que seria
-                recusado. */}
-            {(ehAdministrador ||
+        {conteudo.estado.status === "success" &&
+          (() => {
+            // Solicitar assinatura e do autor, do administrador ou do diretor —
+            // a regra e do servidor; aqui so evitamos oferecer o que seria
+            // recusado.
+            const podeSolicitar =
+              ehAdministrador ||
               usuario?.role === "diretor" ||
-              usuario?.id === atual.criado_por) && (
-              <SolicitarAssinatura
-                documentoId={atual.id}
-                contentType={conteudo.estado.data.contentType}
-                arquivo={conteudo.estado.data.blob}
-                candidatos={membros.estado.status === "success" ? membros.estado.data : []}
-                aoSolicitar={documento.recarregar}
-              />
-            )}
-          </>
-        )}
+              usuario?.id === atual.criado_por;
+            const ehPdf =
+              conteudo.estado.data.contentType.split(";")[0]?.trim().toLowerCase() ===
+              "application/pdf";
+            // Um render por tela. Quem pode marcar ja le o documento no proprio
+            // visualizador de marcacao; desenhar o mesmo PDF duas vezes so gastaria
+            // o dobro do trabalho e daria dois elementos com o mesmo nome acessivel.
+            const mostrarPrevia = !(podeSolicitar && ehPdf);
+
+            return (
+              <>
+                {mostrarPrevia && (
+                  <VisualizadorConteudo
+                    nome={atual.nome}
+                    blob={conteudo.estado.data.blob}
+                    contentType={conteudo.estado.data.contentType}
+                  />
+                )}
+
+                {podeSolicitar && (
+                  <SolicitarAssinatura
+                    documentoId={atual.id}
+                    contentType={conteudo.estado.data.contentType}
+                    arquivo={conteudo.estado.data.blob}
+                    candidatos={
+                      membros.estado.status === "success" ? membros.estado.data : []
+                    }
+                    aoSolicitar={documento.recarregar}
+                  />
+                )}
+              </>
+            );
+          })()}
 
         {/* Sempre visível: as etapas contam a história do documento
             independentemente de o conteúdo ter carregado. */}

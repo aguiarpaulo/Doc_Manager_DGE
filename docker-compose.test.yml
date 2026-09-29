@@ -65,6 +65,9 @@ services:
       GED_SMTP_STARTTLS: "false"
       GED_SMTP_FROM: ged@exemplo.com
       GED_APP_URL_BASE: http://localhost:8080
+      # Permite apontar o servidor do Vite (npm run dev, :5173) para esta API ao
+      # desenvolver. Em producao fica vazio: la a SPA vem da mesma origem.
+      GED_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
       GED_BOOTSTRAP_ADMIN_USERNAME: admin
       GED_BOOTSTRAP_ADMIN_EMAIL: admin@exemplo.com
       GED_BOOTSTRAP_ADMIN_PASSWORD: senha-de-teste-admin-e2e

@@ -8,9 +8,20 @@
  *
  * Tipos sem visualizacao propria caem no botao de download por desenho, nao por
  * omissao: so PDF, imagem e texto simples tem previa no navegador.
+ *
+ * **PDF e desenhado por pdfjs, nao por `<object type="application/pdf">`.** Aquele
+ * elemento delega ao visualizador embutido do navegador; onde ele nao existe — e
+ * o Chrome pode nao te-lo — o `<object>` cai no conteudo alternativo e o documento
+ * simplesmente nao aparece. Foi assim que um PDF valido de 533 KB, servido com o
+ * Content-Type certo, virou "Nao foi possivel exibir o PDF neste navegador" na
+ * tela de quem usava o sistema. Como o projeto ja embarca pdfjs para a tela de
+ * assinatura, havia um renderizador proprio disponivel o tempo todo: usar o
+ * plugin era escolher o caminho que depende de terceiros para falhar.
  */
 
 import { useEffect, useMemo, useState } from "react";
+
+import { VisualizadorPdf } from "../assinatura/VisualizadorPdf.tsx";
 
 type Conteudo =
   | { readonly tipo: "pdf"; readonly url: string }
@@ -71,22 +82,9 @@ export function VisualizadorConteudo({
 
   switch (conteudo.tipo) {
     case "pdf":
-      return (
-        <object
-          className="visualizador__quadro"
-          data={conteudo.url}
-          type="application/pdf"
-          aria-label={`Documento ${nome}`}
-        >
-          {/* Navegador sem visualizador embutido ainda precisa de saida. */}
-          <p>
-            Nao foi possivel exibir o PDF neste navegador.{" "}
-            <a href={conteudo.url} download={nome}>
-              Baixar {nome}
-            </a>
-          </p>
-        </object>
-      );
+      // O mesmo renderizador da tela de assinatura, em modo leitura. Ver a nota
+      // no topo sobre por que nao e mais um `<object>`.
+      return <VisualizadorPdf arquivo={blob} areaAtual={null} somenteLeitura />;
 
     case "imagem":
       return (
