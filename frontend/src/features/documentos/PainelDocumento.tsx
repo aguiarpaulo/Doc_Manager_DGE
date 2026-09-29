@@ -8,6 +8,7 @@
 
 import { useCallback } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import type { Documento, Usuario } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
@@ -61,9 +62,9 @@ export function PainelDocumento({ documentoId }: { documentoId: string }) {
     return (
       <div className="shell__conteudo">
         <p role="alert">{documento.estado.error.message}</p>
-        <button type="button" onClick={documento.recarregar}>
+        <Button variant="secondary" onClick={documento.recarregar}>
           Tentar novamente
-        </button>
+        </Button>
       </div>
     );
   }

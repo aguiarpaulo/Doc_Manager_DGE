@@ -1,0 +1,18 @@
+/* Somente tokens aqui — nenhuma cor literal. */
+
+.card {
+  display: block;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+  padding: var(--space-3);
+}
+
+.card--link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card--link:hover {
+  box-shadow: var(--shadow-card-hover);
+}

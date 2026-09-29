@@ -26,6 +26,7 @@ import type {
 import { contraste, lerTokens } from "../../test/contraste.ts";
 // `?raw` em vez de leitura do disco: independe do diretorio de execucao.
 import cssGlobal from "../../styles/index.css?raw";
+import cssButton from "../../components/ui/button.css?raw";
 import cssShell from "../obras/shell.css?raw";
 import cssAssinatura from "./assinatura.css?raw";
 import { AuthProvider } from "../auth/AuthContext.tsx";
@@ -456,9 +457,11 @@ describe("contraste dos tokens", () => {
     },
   );
 
-  it("o acento institucional mantem 7:1 sobre branco, como documentado", () => {
-    // A decisão registrada era 7:1 — segura até em texto pequeno.
-    expect(contraste(tokens["--color-action"]!, "#ffffff")).toBeGreaterThanOrEqual(7);
+  it("o acento mantem pelo menos 6:1 sobre branco, mais vivo que o azul institucional anterior", () => {
+    // A decisão anterior era 7:1 (um azul mais escuro e contido). O redesign
+    // troca parte dessa margem extra por um acento mais vivo, mas mantem uma
+    // barra acima do minimo legal de 4.5:1 — nao caiu para o piso.
+    expect(contraste(tokens["--color-action"]!, "#ffffff")).toBeGreaterThanOrEqual(6);
   });
 
   /**
@@ -501,6 +504,32 @@ describe("contraste dos tokens", () => {
   });
 });
 
+// --- contraste no tema escuro -------------------------------------------------------
+
+describe("contraste dos tokens no tema escuro", () => {
+  // O redesign tambem tornou o acento do tema escuro mais vivo — cobre so os
+  // tres pares que de fato mudaram (o foco usa o mesmo valor do acento), nao
+  // uma copia inteira de COMBINACOES: os demais tokens do tema escuro nao
+  // foram alterados por este trabalho.
+  const tokensEscuro = lerTokens(':root[data-theme="dark"] {');
+
+  it.each([
+    ["--color-action", "--color-surface", 4.5, "acento sobre a superficie"],
+    ["--color-action-text", "--color-action", 4.5, "texto sobre o acento"],
+  ])("%s sobre %s atende WCAG AA (%s:1) no tema escuro — %s", (frente, fundo, minimo) => {
+    const razao = contraste(tokensEscuro[frente]!, tokensEscuro[fundo]!);
+    expect(razao).toBeGreaterThanOrEqual(minimo as number);
+  });
+
+  it("o anel de foco atende 3:1 para elemento nao textual no tema escuro", () => {
+    // Mesma obrigacao da WCAG 1.4.11 ja coberta para o tema claro (--color-focus
+    // sobre --color-background, acima) — o foco tambem mudou de valor no
+    // redesign do tema escuro e precisa da mesma garantia.
+    const razao = contraste(tokensEscuro["--color-focus"]!, tokensEscuro["--color-background"]!);
+    expect(razao).toBeGreaterThanOrEqual(3);
+  });
+});
+
 // --- cor nao e o unico sinal, e movimento -------------------------------------------
 
 
@@ -524,5 +553,15 @@ describe("cor e movimento", () => {
   it("a area marcada no PDF usa borda tracejada alem da cor", () => {
     const assinatura = cssAssinatura;
     expect(assinatura).toMatch(/\.visualizador-pdf__area[^}]*border:[^;]*dashed/);
+  });
+
+  it("o botao preenchido dispensa borda, o nao preenchido mantem a de 3:1", () => {
+    // WCAG 1.4.11: o preenchimento do botao primario contra a superficie da
+    // pagina ja e o limite visual (verificado por contraste acima); o botao
+    // secundario nao e preenchido e por isso precisa da mesma borda de
+    // --color-border-strong que todo outro controle desta aplicacao usa.
+    const botao = cssButton;
+    expect(botao).toMatch(/\.btn--primary\s*\{[^}]*border:\s*none/);
+    expect(botao).toMatch(/\.btn--secondary\s*\{[^}]*border:[^;]*--color-border-strong/);
   });
 });

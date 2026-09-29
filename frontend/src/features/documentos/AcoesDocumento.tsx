@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import type { Documento } from "../../data/contracts.ts";
 import { ApplicationError } from "../../data/errors.ts";
@@ -92,9 +93,9 @@ export function AcoesDocumento({
         versao {documento.current_version} · {documento.status}
       </span>
 
-      <button type="button" onClick={() => void baixar()}>
+      <Button variant="secondary" onClick={() => void baixar()}>
         Baixar
-      </button>
+      </Button>
 
       <label htmlFor="campo-nova-versao">Nova versao</label>
       <input
@@ -107,27 +108,25 @@ export function AcoesDocumento({
         }}
       />
 
-      <button
-        type="button"
+      <Button
         disabled={ocupado}
         onClick={() => void executar(() => api.iniciarAnalise(documento.id))}
       >
         Enviar para analise
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
         disabled={ocupado}
         onClick={() => void executar(() => api.aprovarDocumento(documento.id))}
       >
         Aprovar
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="secondary"
         disabled={ocupado}
         onClick={() => void executar(() => api.rejeitarDocumento(documento.id))}
       >
         Rejeitar
-      </button>
+      </Button>
 
       {erro !== null && <p role="alert">{erro}</p>}
     </div>

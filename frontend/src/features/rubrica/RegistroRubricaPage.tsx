@@ -10,6 +10,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import { ApplicationError } from "../../data/errors.ts";
 import { useAuth } from "../auth/AuthContext.tsx";
@@ -100,22 +101,18 @@ export function RegistroRubricaPage() {
       <CanvasRubrica ref={canvasRef} aoDesenhar={aoDesenhar} />
 
       <div className="rubrica__acoes">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => {
             canvasRef.current?.limpar();
           }}
           disabled={enviando}
         >
           Limpar
-        </button>
-        <button
-          type="button"
-          onClick={() => void salvar()}
-          disabled={enviando || !temTraco}
-        >
+        </Button>
+        <Button onClick={() => void salvar()} disabled={enviando || !temTraco}>
           {enviando ? "Salvando..." : "Salvar rubrica"}
-        </button>
+        </Button>
       </div>
     </main>
   );

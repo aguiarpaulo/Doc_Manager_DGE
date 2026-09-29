@@ -12,6 +12,7 @@
 
 import { useCallback } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import type { Etapa } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
@@ -61,9 +62,9 @@ export function LinhaDoTempo({ documentoId }: { documentoId: string }) {
       {estado.status === "error" && (
         <p role="alert">
           {estado.error.message}{" "}
-          <button type="button" onClick={recarregar}>
+          <Button variant="secondary" onClick={recarregar}>
             Tentar novamente
-          </button>
+          </Button>
         </p>
       )}
 

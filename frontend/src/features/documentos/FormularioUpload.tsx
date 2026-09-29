@@ -12,6 +12,7 @@
 
 import { useState, type FormEvent } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import {
   CATEGORIAS,
@@ -132,9 +133,9 @@ export function FormularioUpload({ obraId, aoConcluir }: FormularioUploadProps) 
         }}
       />
 
-      <button type="submit" disabled={enviando || arquivo === null}>
+      <Button type="submit" disabled={enviando || arquivo === null}>
         {enviando ? "Enviando..." : "Enviar"}
-      </button>
+      </Button>
     </form>
   );
 }

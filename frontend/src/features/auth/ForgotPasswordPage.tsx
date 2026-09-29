@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 
 export function ForgotPasswordPage() {
@@ -56,9 +57,9 @@ export function ForgotPasswordPage() {
           }}
           required
         />
-        <button type="submit" disabled={enviando}>
+        <Button type="submit" disabled={enviando}>
           {enviando ? "Enviando..." : "Enviar instrucoes"}
-        </button>
+        </Button>
       </form>
       <Link to="/entrar">Voltar para entrar</Link>
     </main>

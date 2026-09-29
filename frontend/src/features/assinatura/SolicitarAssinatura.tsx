@@ -8,6 +8,7 @@
 
 import { useCallback, useState } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import type { Usuario } from "../../data/contracts.ts";
 import { ApplicationError } from "../../data/errors.ts";
@@ -118,13 +119,12 @@ export function SolicitarAssinatura({
         ))}
       </select>
 
-      <button
-        type="button"
+      <Button
         onClick={() => void solicitar()}
         disabled={enviando || area === null || signatarioId === ""}
       >
         {enviando ? "Solicitando..." : "Solicitar assinatura"}
-      </button>
+      </Button>
     </section>
   );
 }

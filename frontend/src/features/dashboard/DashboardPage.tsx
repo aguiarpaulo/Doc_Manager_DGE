@@ -9,12 +9,13 @@
  */
 
 import { useCallback } from "react";
-import { Link } from "react-router-dom";
 
 import * as api from "../../data/api.ts";
 import type { AtividadeObra, ResumoObra, StatusDocumento } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
 import { Cabecalho } from "../../components/layout/Cabecalho.tsx";
+import { Button } from "../../components/ui/Button.tsx";
+import { Card } from "../../components/ui/Card.tsx";
 import { StatusBadge } from "../../components/ui/StatusBadge.tsx";
 import { MinhasPendencias } from "../assinatura/MinhasPendencias.tsx";
 import "./dashboard.css";
@@ -60,7 +61,9 @@ export function DashboardPage() {
       <Cabecalho />
 
       <div className="painel-inicial__corpo">
-        <MinhasPendencias />
+        <Card>
+          <MinhasPendencias />
+        </Card>
 
         <section aria-labelledby="titulo-obras" className="painel-inicial__obras">
           <h2 id="titulo-obras">Suas obras</h2>
@@ -74,9 +77,9 @@ export function DashboardPage() {
           {resumo.estado.status === "error" && (
             <p className="estado-vazio" role="alert">
               {resumo.estado.error.message}{" "}
-              <button type="button" onClick={resumo.recarregar}>
+              <Button variant="secondary" onClick={resumo.recarregar}>
                 Tentar novamente
-              </button>
+              </Button>
             </p>
           )}
 
@@ -92,7 +95,7 @@ export function DashboardPage() {
             <ul className="grade-obras">
               {resumo.estado.data.map((item) => (
                 <li key={item.obra.id}>
-                  <Link to={`/obras/${item.obra.id}`} className="cartao-obra">
+                  <Card as="link" to={`/obras/${item.obra.id}`} className="cartao-obra">
                     <h3>{item.obra.nome}</h3>
                     <p className="cartao-obra__contagens">
                       {STATUS_EM_ORDEM.map((status) => (
@@ -108,7 +111,7 @@ export function DashboardPage() {
                         ? descreverAtividade(item.latest_activity)
                         : "Nenhuma atividade registrada ainda."}
                     </p>
-                  </Link>
+                  </Card>
                 </li>
               ))}
             </ul>

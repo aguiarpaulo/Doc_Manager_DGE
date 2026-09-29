@@ -16,6 +16,7 @@ import * as api from "../../data/api.ts";
 import type { Documento, Obra } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
 import { Cabecalho } from "../../components/layout/Cabecalho.tsx";
+import { Button } from "../../components/ui/Button.tsx";
 import { MinhasPendencias } from "../assinatura/MinhasPendencias.tsx";
 import { FormularioUpload } from "../documentos/FormularioUpload.tsx";
 import { PainelDocumento } from "../documentos/PainelDocumento.tsx";
@@ -103,9 +104,9 @@ export function ObraShell() {
           {documentos.estado.status === "error" && (
             <p className="estado-vazio" role="alert">
               {documentos.estado.error.message}{" "}
-              <button type="button" onClick={documentos.recarregar}>
+              <Button variant="secondary" onClick={documentos.recarregar}>
                 Tentar novamente
-              </button>
+              </Button>
             </p>
           )}
 

@@ -14,6 +14,7 @@
 import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import { Modal } from "../../components/ui/Modal.tsx";
 import * as api from "../../data/api.ts";
 import type {
@@ -207,24 +208,23 @@ export function AssinarDocumentoPage() {
             Você foi indicado para assinar na página {minhaPendencia.pagina}.
           </p>
           <div className="assinar__acoes">
-            <button
-              type="button"
+            <Button
               onClick={() => {
                 setModalAberto(true);
               }}
             >
               Assinar documento
-            </button>
+            </Button>
             {/* Recusar so aparece para quem e o signatario indicado — a mesma
                 condicao que faz o bloco inteiro existir. */}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={() => {
                 setRecusaAberta(true);
               }}
             >
               Recusar assinatura
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -295,16 +295,19 @@ export function AssinarDocumentoPage() {
         />
 
         <div className="modal__acoes">
-          <button type="button" onClick={fecharRecusa} disabled={recusando}>
+          <Button variant="secondary" onClick={fecharRecusa} disabled={recusando}>
             Cancelar
-          </button>
-          <button
-            type="button"
+          </Button>
+          {/* Secundario, nao primario: recusar e um desfecho negativo, no mesmo
+              espirito de "Rejeitar" em AcoesDocumento.tsx — o preenchimento
+              vivido do botao primario e reservado para acoes construtivas. */}
+          <Button
+            variant="secondary"
             onClick={() => void recusar()}
             disabled={recusando || motivo.trim() === ""}
           >
             {recusando ? "Recusando..." : "Confirmar recusa"}
-          </button>
+          </Button>
         </div>
       </Modal>
 
@@ -327,16 +330,15 @@ export function AssinarDocumentoPage() {
         />
 
         <div className="modal__acoes">
-          <button type="button" onClick={fechar} disabled={enviando}>
+          <Button variant="secondary" onClick={fechar} disabled={enviando}>
             Cancelar
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => void confirmar()}
             disabled={enviando || senha === ""}
           >
             {enviando ? "Assinando..." : "Confirmar assinatura"}
-          </button>
+          </Button>
         </div>
       </Modal>
     </main>

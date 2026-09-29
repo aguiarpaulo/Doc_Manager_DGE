@@ -14,6 +14,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Button } from "../../components/ui/Button.tsx";
+
 export interface AreaNormalizada {
   readonly pagina: number;
   readonly x: number;
@@ -277,15 +279,15 @@ export function VisualizadorPdf({
     return (
       <div>
         <p role="alert">{estado.mensagem}</p>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           onClick={() => {
             setEstado({ status: "carregando" });
             setTentativa((t) => t + 1);
           }}
         >
           Tentar novamente
-        </button>
+        </Button>
       </div>
     );
   }

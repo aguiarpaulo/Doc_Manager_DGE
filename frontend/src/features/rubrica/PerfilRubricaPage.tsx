@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import { Modal } from "../../components/ui/Modal.tsx";
 import * as api from "../../data/api.ts";
 import { ApplicationError } from "../../data/errors.ts";
@@ -147,9 +148,9 @@ export function PerfilRubricaPage() {
           {rubrica.estado.status === "error" && (
             <p role="alert">
               {rubrica.estado.error.message}{" "}
-              <button type="button" onClick={rubrica.recarregar}>
+              <Button variant="secondary" onClick={rubrica.recarregar}>
                 Tentar novamente
-              </button>
+              </Button>
             </p>
           )}
           {rubrica.estado.status === "success" && (
@@ -157,22 +158,22 @@ export function PerfilRubricaPage() {
           )}
 
           <div className="rubrica__acoes">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={() => {
                 setTrocando((valor) => !valor);
               }}
             >
               {trocando ? "Cancelar troca" : "Trocar rubrica"}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => {
                 setExclusaoAberta(true);
               }}
             >
               Apagar rubrica
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -187,22 +188,18 @@ export function PerfilRubricaPage() {
           <CanvasRubrica ref={canvasRef} aoDesenhar={aoDesenhar} />
 
           <div className="rubrica__acoes">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
               onClick={() => {
                 canvasRef.current?.limpar();
               }}
               disabled={salvando}
             >
               Limpar
-            </button>
-            <button
-              type="button"
-              onClick={() => void salvar()}
-              disabled={salvando || !temTraco}
-            >
+            </Button>
+            <Button onClick={() => void salvar()} disabled={salvando || !temTraco}>
               {salvando ? "Salvando..." : "Salvar nova rubrica"}
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -231,16 +228,19 @@ export function PerfilRubricaPage() {
         />
 
         <div className="modal__acoes">
-          <button type="button" onClick={fecharExclusao} disabled={apagando}>
+          <Button variant="secondary" onClick={fecharExclusao} disabled={apagando}>
             Cancelar
-          </button>
-          <button
-            type="button"
+          </Button>
+          {/* Secundario, nao primario: e a acao mais irreversivel do app (nada
+              mais aqui e apagado de verdade) e o redesign nao deveria tornar
+              esse botao mais chamativo do que era antes da migracao. */}
+          <Button
+            variant="secondary"
             onClick={() => void apagar()}
             disabled={apagando || senha === ""}
           >
             {apagando ? "Apagando..." : "Apagar definitivamente"}
-          </button>
+          </Button>
         </div>
       </Modal>
     </main>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import { ApplicationError } from "../../data/errors.ts";
 import { useAuth } from "./AuthContext.tsx";
 
@@ -96,9 +97,9 @@ export function LoginPage() {
         />
 
         {/* Desabilitado durante o envio: impede submissao duplicada. */}
-        <button type="submit" disabled={enviando}>
+        <Button type="submit" disabled={enviando}>
           {enviando ? "Entrando..." : "Entrar"}
-        </button>
+        </Button>
       </form>
 
       <Link to="/esqueci-minha-senha">Esqueci minha senha</Link>

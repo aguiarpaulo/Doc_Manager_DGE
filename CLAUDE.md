@@ -307,21 +307,42 @@ and puts the file in a separate `/versions` call. Some things are *only*
 provable in the browser — a stroke on the canvas, a PDF rendered by pdfjs, a
 rectangle dragged with the mouse — so jsdom tests must not claim them.
 
-**Visual identity lives in `frontend/src/styles/index.css` as semantic tokens**,
-carried over from the Streamlit theme it replaced: one restrained accent
-(`#15497b`, 7:1 on white), neutral greys, 15px base type for denser document
-lists, and square corners (`--radius: 0`) — which is why `--border-width` is never
-zero, since borders do the structural work corners normally would. **That is also
-why there are two border tokens.** `--color-border` (1.43:1) is a decorative
-divider; `--color-border-strong` (3.11:1 light / 3.46:1 dark) is what identifies a
-control — field, select, textarea, the rubric canvas, the modal — because WCAG
-1.4.11 requires 3:1 there and, with no rounded corners, the border is the only
-thing marking where a control begins. A test enumerates every `--color-*` token
-and fails if one is neither in the approved-combination list nor exempted with a
-written reason, so the list cannot silently go stale. Status colours
-differ in lightness as well as hue so the four document states stay distinguishable
-in greyscale or to a red-green colourblind reader. No literal colour may appear
-outside that file.
+**Visual identity lives in `frontend/src/styles/index.css` as semantic tokens.**
+A "friendlier UI" redesign moved it from the original Streamlit-derived look
+(one restrained accent at 7:1, square corners) to: a more vivid, saturated accent
+(`#1a56db` light / `#4c8dff` dark, both ≥6:1 — still comfortably above the 4.5:1
+WCAG AA floor, just trading some of the old extra margin for saturation) and a
+**graduated radius scale** — `--radius-sm` (buttons, inputs),
+`--radius-md` (cards), `--radius-lg` (the modal) — instead of one flat value,
+because a single large radius applied to a small control looks wrong next to the
+same radius on a big container. `--radius: 0` stays defined but consumed nowhere,
+kept only so nothing that might reference it breaks silently. Status colours and
+the neutral grey scale were deliberately left alone — the redesign's brief was
+"one more vivid accent," not a full palette rework. `--border-width` is still
+never zero: rounding corners didn't remove the need for a control's boundary to
+be visible, it just softened its shape. **That is also why there are two border
+tokens.** `--color-border` (1.43:1) is a decorative divider; `--color-border-strong`
+(3.11:1 light / 3.46:1 dark) is what identifies a control — field, select,
+textarea, the rubric canvas, the modal — because WCAG 1.4.11 requires 3:1 there.
+A filled `Button` (`frontend/src/components/ui/Button.tsx`, `variant="primary"`)
+is the one exception that needs no border of its own: its solid fill against the
+page background already clears 3:1, which is why only the unfilled `secondary`
+variant carries `--color-border-strong`. `Card` (`components/ui/Card.tsx`) uses a
+soft `--shadow-card` instead of a border, because a card is a container, not a
+"control" under 1.4.11. A test enumerates every `--color-*` token and fails if one
+is neither in the approved-combination list nor exempted with a written reason, so
+the list cannot silently go stale — and a second, narrower test does the same for
+the dark-mode accent and focus ring, not a full duplicate of the light-mode table.
+**Dark mode has two token blocks that must stay identical**: `@media
+(prefers-color-scheme: dark)` (system preference) and `:root[data-theme="dark"]`
+(an explicit override, for if a manual toggle is ever wired up) — nothing enforces
+this beyond both being written by hand, which is exactly how a `replace_all` edit
+during the redesign silently updated only the first one, matched by indentation
+rather than by which selector it was under. The dark-mode contrast test reads the
+explicit-override block specifically, so a future edit that repeats this mistake
+will fail it. Status colours differ in lightness as well as hue so the four
+document states stay distinguishable in greyscale or to a red-green colourblind
+reader. No literal colour may appear outside that file.
 
 **For a viewer, the honest assertion is about what was drawn.** `VisualizadorPdf`
 looked up `canvas[data-pagina=N]` *while the state was still `carregando`* — the

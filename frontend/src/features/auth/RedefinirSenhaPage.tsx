@@ -14,6 +14,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import { ApplicationError } from "../../data/errors.ts";
 
@@ -114,9 +115,9 @@ export function RedefinirSenhaPage() {
           }}
         />
 
-        <button type="submit" disabled={enviando || senha === "" || confirmacao === ""}>
+        <Button type="submit" disabled={enviando || senha === "" || confirmacao === ""}>
           {enviando ? "Redefinindo..." : "Redefinir senha"}
-        </button>
+        </Button>
       </form>
 
       <Link to="/entrar">Voltar para entrar</Link>
