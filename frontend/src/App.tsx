@@ -15,6 +15,7 @@ import { AdminPage } from "./features/admin/AdminPage.tsx";
 import { AuthProvider } from "./features/auth/AuthContext.tsx";
 import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage.tsx";
 import { LoginPage } from "./features/auth/LoginPage.tsx";
+import { RedefinirSenhaPage } from "./features/auth/RedefinirSenhaPage.tsx";
 import { RotaProtegida } from "./features/auth/RotaProtegida.tsx";
 import { EscolherObra } from "./features/obras/EscolherObra.tsx";
 import { ObraShell } from "./features/obras/ObraShell.tsx";
@@ -36,6 +37,9 @@ export function Rotas() {
     <Routes>
       <Route path="/entrar" element={<LoginPage />} />
       <Route path="/esqueci-minha-senha" element={<ForgotPasswordPage />} />
+      {/* Destino do link que o e-mail de recuperacao monta em `signature_link`
+          irmao: `{GED_APP_URL_BASE}/redefinir-senha?token=...`. */}
+      <Route path="/redefinir-senha" element={<RedefinirSenhaPage />} />
       <Route element={<RotaProtegida />}>
         {/* Fora do guarda de rubrica por construcao: e para ca que ele redireciona. */}
         <Route path="/rubrica" element={<RegistroRubricaPage />} />
