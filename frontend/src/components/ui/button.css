@@ -1,0 +1,39 @@
+/* Somente tokens aqui — nenhuma cor literal. */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  font: inherit;
+  font-size: var(--font-size-button);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn--primary {
+  border: none;
+  background: var(--color-action);
+  color: var(--color-action-text);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.btn--secondary {
+  border: var(--border-width) solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-action);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--color-action);
+}

@@ -3,10 +3,9 @@
    Esta e a unica folha onde uma cor literal pode aparecer. */
 
 :root {
-  /* Superficies e texto. Valores herdados de .streamlit/config.toml, que era
-     onde a identidade visual morava antes da SPA: sistema de registros de uma
-     construtora, com cara de software institucional e nao de produto de
-     consumo -- um acento so, cinzas neutros e tipografia densa. */
+  /* Superficies e texto. Neutros seguem o visual anterior (herdado do tema
+     Streamlit que a SPA substituiu); o acento e a forma dos cantos e que
+     mudaram no redesign "mais amigavel". */
   --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-surface-muted: #f1f3f5;
@@ -19,20 +18,23 @@
   --color-text-primary: #1c1f23;
   --color-text-secondary: #5a6169;
 
-  /* Um unico acento, usado para acao e foco. Azul institucional profundo, com
-     contraste 7:1 sobre branco, entao seguro tambem em texto pequeno.
+  /* Um unico acento, usado para acao e foco. Redesign "mais amigavel": troca
+     parte da margem extra do azul institucional anterior (7:1) por um azul
+     mais vivo e saturado, mantendo folga real acima do minimo legal de AA
+     (4.5:1) -- ver o teste "mantem pelo menos 6:1" em acessibilidade.test.tsx.
      O token de preenchimento difere do de texto porque os requisitos de
      contraste dos dois casos sao diferentes. */
-  --color-action: #15497b;
+  --color-action: #1a56db;
   --color-action-text: #ffffff;
-  --color-action-hover: #0f3559;
-  --color-focus: #15497b;
+  --color-action-hover: #123f9e;
+  --color-focus: #1a56db;
   /* Fundo do modal: escurece a pagina sem depender de opacidade no conteudo. */
   --color-overlay: rgba(28, 31, 35, 0.55);
 
   /* Cores de status ajustadas para os quatro estados do documento continuarem
      distinguiveis impressos em escala de cinza ou vistos por alguem com
-     daltonismo vermelho-verde: elas diferem tambem em luminosidade. */
+     daltonismo vermelho-verde: elas diferem tambem em luminosidade. Fora do
+     escopo do redesign de acento -- continuam como estavam. */
   --color-danger: #a32020;
   --color-danger-text: #ffffff;
   --color-success: #1e6b3a;
@@ -42,8 +44,11 @@
   --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "Consolas", monospace;
   /* 15px sobre o padrao de 16: linhas mais densas cabem mais itens da lista de
-     documentos na tela, que e para o que este sistema serve. */
+     documentos na tela, que e para o que este sistema serve. Titulos e botoes
+     usam os tokens maiores abaixo -- o redesign aumenta destaque, nao densidade. */
   --font-size-base: 0.9375rem;
+  --font-size-heading: 1.5rem;
+  --font-size-button: 1rem;
   --line-height-base: 1.5;
 
   /* Espacamento e forma */
@@ -52,11 +57,25 @@
   --space-3: 1rem;
   --space-4: 1.5rem;
   --space-5: 2rem;
-  /* Cantos retos em tudo. Sem arredondamento separando os controles da pagina,
-     a borda faz o trabalho estrutural que os cantos costumam fazer -- por isso
-     --border-width nunca e zero. */
+  /* Cantos retos: mantido apenas por compatibilidade, nenhum seletor deveria
+     mais consumir este token depois do redesign -- --radius-sm/-md/-lg/-full
+     abaixo e que sao usados agora, graduados por tamanho de elemento (controles
+     pequenos menos arredondados, cards/paineis mais). */
   --radius: 0;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-full: 999px;
   --border-width: 1px;
+  /* Sombra suave para cards: eles nao sao "controles" no sentido da WCAG
+     1.4.11 (campo, select, botao, o modal), entao nao precisam da borda de
+     3:1 -- a sombra basta como limite visual de um container nao-interativo. */
+  --shadow-card:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover:
+    0 2px 5px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 /* Tema escuro por preferencia do sistema. Apenas os tokens mudam;
@@ -71,10 +90,14 @@
     --color-text-primary: #eceef2;
     --color-text-secondary: #a8b0bd;
 
-    --color-action: #5aa9f0;
+    /* Mesmo redesign do tema claro: acento mais vivo e saturado, mantendo folga
+       acima de 4.5:1 ("contraste dos tokens no tema escuro" em
+       acessibilidade.test.tsx). O hover clareia em vez de escurecer -- a
+       direcao certa em superficie escura, o oposto do tema claro. */
+    --color-action: #4c8dff;
     --color-action-text: #0d1117;
-    --color-action-hover: #7cbcf4;
-    --color-focus: #5aa9f0;
+    --color-action-hover: #6ea2ff;
+    --color-focus: #4c8dff;
 
     --color-danger: #f08a86;
     --color-danger-text: #0d1117;
@@ -93,10 +116,13 @@
   --color-text-primary: #eceef2;
   --color-text-secondary: #a8b0bd;
 
-  --color-action: #5aa9f0;
+  /* Mesmo acento vivo do bloco de preferencia do sistema acima — as duas
+     formas de ativar o tema escuro (preferencia do SO ou escolha explicita)
+     tem que concordar, ou alternar entre elas mudaria a cor do acento. */
+  --color-action: #4c8dff;
   --color-action-text: #0d1117;
-  --color-action-hover: #7cbcf4;
-  --color-focus: #5aa9f0;
+  --color-action-hover: #6ea2ff;
+  --color-focus: #4c8dff;
   --color-overlay: rgba(0, 0, 0, 0.65);
 
   --color-danger: #f08a86;
@@ -127,7 +153,7 @@ input,
 select,
 textarea {
   border: var(--border-width) solid var(--color-border-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text-primary);
   font: inherit;

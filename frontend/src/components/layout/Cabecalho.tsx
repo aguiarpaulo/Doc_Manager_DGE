@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../../features/auth/AuthContext.tsx";
+import { Button } from "../ui/Button.tsx";
 import "./cabecalho.css";
 
 export function Cabecalho({ children }: { children?: ReactNode }) {
@@ -18,7 +19,12 @@ export function Cabecalho({ children }: { children?: ReactNode }) {
 
   return (
     <header className="cabecalho">
-      <h1 className="cabecalho__marca">Gerenciador de Documentos</h1>
+      {/* Titulo de nivel 1 mas tambem navegavel: clicar na marca volta ao
+          painel inicial, de qualquer tela que use este cabecalho (o shell da
+          obra, por exemplo, nao tinha nenhum outro caminho de volta). */}
+      <h1 className="cabecalho__marca">
+        <Link to="/">Gerenciador de Documentos</Link>
+      </h1>
 
       {children}
 
@@ -27,9 +33,9 @@ export function Cabecalho({ children }: { children?: ReactNode }) {
       </span>
       <Link to="/perfil/rubrica">Minha rubrica</Link>
       {ehAdministrador && <Link to="/administracao">Administração</Link>}
-      <button type="button" onClick={sair}>
+      <Button variant="secondary" onClick={sair}>
         Sair
-      </button>
+      </Button>
     </header>
   );
 }

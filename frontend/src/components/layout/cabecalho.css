@@ -13,7 +13,16 @@
 
 .cabecalho__marca {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--font-size-heading);
+}
+
+.cabecalho__marca a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cabecalho__marca a:hover {
+  text-decoration: underline;
 }
 
 .cabecalho__identidade {

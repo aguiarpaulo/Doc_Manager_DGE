@@ -18,6 +18,7 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 
+import { Button } from "../../components/ui/Button.tsx";
 import * as api from "../../data/api.ts";
 import type { Obra, Papel, Usuario } from "../../data/contracts.ts";
 import { ApplicationError } from "../../data/errors.ts";
@@ -232,9 +233,9 @@ function BlocoUsuarios({
           ))}
         </select>
 
-        <button type="submit" disabled={ocupado}>
+        <Button type="submit" disabled={ocupado}>
           Criar usuario
-        </button>
+        </Button>
       </form>
 
       {usuarios.estado.status === "loading" && <p role="status">Carregando usuarios...</p>}
@@ -284,8 +285,8 @@ function BlocoUsuarios({
                 <td>
                   {/* O rotulo do botao acompanha o estado do usuario: fora de um
                       form, para que a mudanca apareca sem novo envio. */}
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     disabled={ocupado}
                     onClick={() => {
                       void executar(
@@ -295,7 +296,7 @@ function BlocoUsuarios({
                     }}
                   >
                     {u.is_active ? `Desativar ${u.username}` : `Ativar ${u.username}`}
-                  </button>
+                  </Button>
                   {u.id === idDoUsuarioAtual && <span> (voce)</span>}
                 </td>
               </tr>
@@ -352,9 +353,9 @@ function BlocoObras({
             setDescricao(e.target.value);
           }}
         />
-        <button type="submit" disabled={ocupado}>
+        <Button type="submit" disabled={ocupado}>
           Criar obra
-        </button>
+        </Button>
       </form>
 
       {obras.estado.status === "empty" && (
@@ -366,8 +367,8 @@ function BlocoObras({
           {obras.estado.data.map((o) => (
             <li key={o.id}>
               {o.nome}{" "}
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 disabled={ocupado}
                 onClick={() => {
                   void executar(() => api.arquivarObra(o.id), () => {
@@ -376,7 +377,7 @@ function BlocoObras({
                 }}
               >
                 Arquivar {o.nome}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -414,8 +415,8 @@ function BlocoRestaurar({
           {lista.map((o) => (
             <li key={o.id}>
               {o.nome}{" "}
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 disabled={ocupado}
                 onClick={() => {
                   void executar(() => api.restaurarObra(o.id), () => {
@@ -425,7 +426,7 @@ function BlocoRestaurar({
                 }}
               >
                 Restaurar {o.nome}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -507,8 +508,7 @@ function BlocoAcessos({
             ))}
           </select>
 
-          <button
-            type="button"
+          <Button
             disabled={ocupado || usuarioId === "" || obraId === ""}
             onClick={() => {
               void executar(
@@ -520,10 +520,10 @@ function BlocoAcessos({
             }}
           >
             Conceder acesso
-          </button>
+          </Button>
 
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             disabled={ocupado || usuarioId === "" || obraId === ""}
             onClick={() => {
               void executar(
@@ -535,7 +535,7 @@ function BlocoAcessos({
             }}
           >
             Remover acesso
-          </button>
+          </Button>
         </>
       )}
     </section>

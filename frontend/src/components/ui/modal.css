@@ -22,6 +22,7 @@
   /* A caixa do diálogo é um componente: sua borda o separa do escurecimento do
      fundo e precisa dos 3:1 da WCAG 1.4.11. */
   border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
 }
 
 .modal h2 {
