@@ -1,7 +1,34 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { VisualizadorConteudo, classificar } from "./VisualizadorConteudo.tsx";
+
+// O jsdom nao desenha canvas; o que estes testes cobrem e o despacho e o estado.
+// Que a pagina apareca desenhada de verdade e provado em navegador, no E2E.
+vi.mock("pdfjs-dist", () => ({
+  GlobalWorkerOptions: { workerSrc: "" },
+  getDocument: vi.fn(() => ({
+    promise: Promise.resolve({
+      numPages: 1,
+      getPage: () =>
+        Promise.resolve({
+          getViewport: () => ({ width: 595, height: 842 }),
+          render: () => ({ promise: Promise.resolve() }),
+        }),
+    }),
+  })),
+}));
+const pdfjsFalso = await import("pdfjs-dist");
+
+/**
+ * A tarefa de carregamento do pdfjs declara dez campos internos que o componente
+ * nunca toca — ele só aguarda `promise`. O molde é estreitado de propósito, em vez
+ * de fingir uma tarefa completa que ninguém usa.
+ */
+type TarefaPdf = ReturnType<typeof pdfjsFalso.getDocument>;
+function tarefaQueFalha(mensagem: string): TarefaPdf {
+  return { promise: Promise.reject(new Error(mensagem)) } as unknown as TarefaPdf;
+}
 
 // O ponto destes testes: a decisao de renderizacao vem do Content-Type, e o
 // nome do arquivo nunca participa dela.
@@ -88,7 +115,7 @@ describe("VisualizadorConteudo", () => {
     expect(screen.getByRole("img", { name: "Documento fachada.png" })).toBeInTheDocument();
   });
 
-  it("mantem saida por download quando o PDF nao pode ser exibido", () => {
+  it("desenha o PDF com o proprio renderizador, sem depender de plugin", async () => {
     render(
       <VisualizadorConteudo
         nome="contrato.pdf"
@@ -97,8 +124,44 @@ describe("VisualizadorConteudo", () => {
       />,
     );
 
-    // O conteudo alternativo do <object> e a rede de seguranca do navegador
-    // sem visualizador embutido.
-    expect(screen.getByRole("link", { name: /Baixar contrato.pdf/ })).toBeInTheDocument();
+    // O `<object type="application/pdf">` dependia do visualizador embutido do
+    // navegador. Quando ele nao existe — Chrome sem o plugin, por exemplo — o
+    // elemento cai no conteudo alternativo e o documento simplesmente nao
+    // aparece. O app ja embarca pdfjs; usar plugin era a origem do defeito.
+    expect(await screen.findByLabelText("Página 1")).toBeInTheDocument();
+    expect(document.querySelector("object")).toBeNull();
+  });
+
+  it("no acervo o PDF e so leitura: nao oferece marcar area", async () => {
+    render(
+      <VisualizadorConteudo
+        nome="contrato.pdf"
+        blob={new Blob(["%PDF"], { type: "application/pdf" })}
+        contentType="application/pdf"
+      />,
+    );
+    await screen.findByLabelText("Página 1");
+
+    // Marcar area pertence ao bloco de solicitar assinatura, que vive ao lado.
+    // Duplicar a camada aqui daria dois controles identicos na mesma tela.
+    expect(screen.queryByRole("application")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Arraste sobre a página/)).not.toBeInTheDocument();
+  });
+
+  it("PDF ilegivel avisa e deixa tentar de novo", async () => {
+    vi.mocked(pdfjsFalso.getDocument).mockImplementationOnce(() =>
+      tarefaQueFalha("estrutura invalida"),
+    );
+
+    render(
+      <VisualizadorConteudo
+        nome="quebrado.pdf"
+        blob={new Blob(["nao e pdf"], { type: "application/pdf" })}
+        contentType="application/pdf"
+      />,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível abrir/i);
+    expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
   });
 });

@@ -27,7 +27,7 @@ export interface AreaNormalizada {
 
 export interface VisualizadorPdfProps {
   readonly arquivo: Blob;
-  readonly aoMarcar: (area: AreaNormalizada) => void;
+  readonly aoMarcar?: (area: AreaNormalizada) => void;
   readonly areaAtual: AreaNormalizada | null;
   /**
    * Pagina aberta ao carregar. Quem vai assinar precisa cair direto na pagina
@@ -35,7 +35,21 @@ export interface VisualizadorPdfProps {
    * chance de assinar sem ter olhado.
    */
   readonly paginaInicial?: number;
+  /**
+   * Só exibe o documento: sem camada de marcação, sem arrasto e sem teclado.
+   *
+   * É o que o acervo precisa. Antes ele usava `<object type="application/pdf">`,
+   * que depende do visualizador embutido do navegador — quando não há, o elemento
+   * cai no conteúdo alternativo e o documento não aparece. Com pdfjs já embarcado
+   * no projeto, depender de plugin era escolher o caminho que falha.
+   */
+  readonly somenteLeitura?: boolean;
 }
+
+/** Só o que este componente usa do documento aberto pelo pdfjs. */
+type DocumentoPdf = Awaited<
+  ReturnType<typeof import("pdfjs-dist").getDocument>["promise"]
+>;
 
 interface PaginaRenderizada {
   readonly numero: number;
@@ -83,10 +97,13 @@ export function VisualizadorPdf({
   aoMarcar,
   areaAtual,
   paginaInicial = 1,
+  somenteLeitura = false,
 }: VisualizadorPdfProps) {
   const [estado, setEstado] = useState<EstadoPdf>({ status: "carregando" });
   const [paginaAtiva, setPaginaAtiva] = useState(paginaInicial);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // O documento aberto, guardado entre a fase que o mede e a que o desenha.
+  const documentoRef = useRef<DocumentoPdf | null>(null);
   const arrastandoRef = useRef<{ x: number; y: number } | null>(null);
   const [tentativa, setTentativa] = useState(0);
 
@@ -117,19 +134,14 @@ export function VisualizadorPdf({
             larguraPt: viewport.width,
             alturaPt: viewport.height,
           });
-
-          const canvas = containerRef.current?.querySelector<HTMLCanvasElement>(
-            `canvas[data-pagina="${String(numero)}"]`,
-          );
-          const contexto = canvas?.getContext("2d");
-          if (canvas && contexto) {
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            await pagina.render({ canvas, canvasContext: contexto, viewport }).promise;
-          }
         }
 
-        if (ativo) setEstado({ status: "pronto", paginas });
+        if (!ativo) return;
+        // O documento fica guardado para a fase de desenho. Desenhar aqui seria
+        // desenhar no vazio: enquanto o estado é "carregando" o componente só
+        // renderiza o parágrafo de carga, e os canvases ainda não existem.
+        documentoRef.current = documento;
+        setEstado({ status: "pronto", paginas });
       } catch (erro: unknown) {
         if (ativo) {
           setEstado({
@@ -148,6 +160,46 @@ export function VisualizadorPdf({
     };
   }, [arquivo, tentativa]);
 
+  /**
+   * Segunda fase: desenhar. Só corre depois que o estado virou "pronto", que é
+   * quando os canvases finalmente estão montados e podem receber a página.
+   *
+   * Desenha apenas a página visível. Um PDF de cem páginas não pode custar cem
+   * renderizações para mostrar a primeira.
+   */
+  useEffect(() => {
+    if (estado.status !== "pronto") return;
+    const documento = documentoRef.current;
+    if (documento === null) return;
+
+    const canvas = containerRef.current?.querySelector<HTMLCanvasElement>(
+      `canvas[data-pagina="${String(paginaAtiva)}"]`,
+    );
+    const contexto = canvas?.getContext("2d");
+    if (!canvas || !contexto) return;
+
+    let ativo = true;
+    let tarefa: { cancel?: () => void } | null = null;
+
+    void (async () => {
+      const pagina = await documento.getPage(paginaAtiva);
+      if (!ativo) return;
+      const viewport = pagina.getViewport({ scale: 1 });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      tarefa = pagina.render({ canvas, canvasContext: contexto, viewport });
+      // Cancelar rejeita a promessa; isso é fim normal, não falha a mostrar.
+      await (tarefa as { promise: Promise<void> }).promise.catch(() => undefined);
+    })();
+
+    return () => {
+      ativo = false;
+      // Duas renderizações simultâneas no mesmo canvas são erro no pdfjs, e
+      // trocar de página rápido chega a provocá-lo.
+      tarefa?.cancel?.();
+    };
+  }, [estado, paginaAtiva]);
+
   const paginaInfo =
     estado.status === "pronto"
       ? estado.paginas.find((p) => p.numero === paginaAtiva)
@@ -156,7 +208,7 @@ export function VisualizadorPdf({
   const emitir = useCallback(
     (area: Omit<AreaNormalizada, "pageWidth" | "pageHeight" | "pagina">) => {
       if (!paginaInfo) return;
-      aoMarcar({
+      aoMarcar?.({
         pagina: paginaInfo.numero,
         ...area,
         pageWidth: paginaInfo.larguraPt,
@@ -210,7 +262,7 @@ export function VisualizadorPdf({
 
     evento.preventDefault();
     const movida = moverArea(areaAtual, { ...acao, redimensiona });
-    aoMarcar(movida);
+    aoMarcar?.(movida);
   }
 
   if (estado.status === "carregando") {
@@ -263,39 +315,69 @@ export function VisualizadorPdf({
           className="visualizador-pdf__pagina"
           hidden={p.numero !== paginaAtiva}
         >
-          <canvas data-pagina={p.numero} aria-label={`Página ${String(p.numero)}`} />
+          {/* Nasce com o tamanho da página, medido na primeira fase. Deixar o
+              canvas no padrão 300x150 até o desenho chegar faria a área de
+              marcação mudar de geometria debaixo do ponteiro — e uma marcação
+              iniciada antes disso cairia no lugar errado. */}
+          <canvas
+            data-pagina={p.numero}
+            width={p.larguraPt}
+            height={p.alturaPt}
+            aria-label={`Página ${String(p.numero)}`}
+          />
 
-          {/* Camada de marcação: recebe o arrasto e o teclado. */}
-          <div
-            className="visualizador-pdf__marcacao"
-            role="application"
-            aria-label={`Marcar área de assinatura na página ${String(p.numero)}`}
-            aria-describedby="ajuda-marcacao"
-            tabIndex={0}
-            onPointerDown={comecar}
-            onPointerUp={soltar}
-            onKeyDown={pelasTeclas}
-          >
-            {areaAtual && areaAtual.pagina === p.numero && (
-              <div
-                className="visualizador-pdf__area"
-                data-testid="area-marcada"
-                style={{
-                  left: `${String(areaAtual.x * 100)}%`,
-                  top: `${String(areaAtual.y * 100)}%`,
-                  width: `${String(areaAtual.largura * 100)}%`,
-                  height: `${String(areaAtual.altura * 100)}%`,
-                }}
-              />
-            )}
-          </div>
+          {/* Camada de marcação: recebe o arrasto e o teclado. Em leitura ela não
+              existe — um `role="application"` focável que não faz nada anunciaria
+              a leitores de tela um controle inexistente. */}
+          {somenteLeitura ? (
+            areaAtual?.pagina === p.numero && (
+              <div className="visualizador-pdf__marcacao">
+                <div
+                  className="visualizador-pdf__area"
+                  data-testid="area-marcada"
+                  style={{
+                    left: `${String(areaAtual.x * 100)}%`,
+                    top: `${String(areaAtual.y * 100)}%`,
+                    width: `${String(areaAtual.largura * 100)}%`,
+                    height: `${String(areaAtual.altura * 100)}%`,
+                  }}
+                />
+              </div>
+            )
+          ) : (
+            <div
+              className="visualizador-pdf__marcacao"
+              role="application"
+              aria-label={`Marcar área de assinatura na página ${String(p.numero)}`}
+              aria-describedby="ajuda-marcacao"
+              tabIndex={0}
+              onPointerDown={comecar}
+              onPointerUp={soltar}
+              onKeyDown={pelasTeclas}
+            >
+              {areaAtual && areaAtual.pagina === p.numero && (
+                <div
+                  className="visualizador-pdf__area"
+                  data-testid="area-marcada"
+                  style={{
+                    left: `${String(areaAtual.x * 100)}%`,
+                    top: `${String(areaAtual.y * 100)}%`,
+                    width: `${String(areaAtual.largura * 100)}%`,
+                    height: `${String(areaAtual.altura * 100)}%`,
+                  }}
+                />
+              )}
+            </div>
+          )}
         </div>
       ))}
 
-      <p id="ajuda-marcacao">
-        Arraste sobre a página para marcar onde a assinatura deve ficar. Pelo
-        teclado: setas movem, Shift acelera e Alt redimensiona.
-      </p>
+      {!somenteLeitura && (
+        <p id="ajuda-marcacao">
+          Arraste sobre a página para marcar onde a assinatura deve ficar. Pelo
+          teclado: setas movem, Shift acelera e Alt redimensiona.
+        </p>
+      )}
     </div>
   );
 }

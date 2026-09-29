@@ -242,15 +242,32 @@ test.describe("jornada de assinatura ponta a ponta", () => {
     const alvo = page.getByRole("application", {
       name: /Marcar área de assinatura na página 2/,
     });
+    // A página é desenhada no tamanho real, então é mais alta que a janela — como
+    // um documento de verdade. Rolar até ela antes de medir é o que a pessoa faz;
+    // sem isto o arrasto acontece em coordenadas fora da viewport e nada é
+    // marcado. (Antes disto passar era acidente: o canvas ficava no padrão
+    // 300x150 porque nada chegava a ser desenhado nele.)
+    await alvo.scrollIntoViewIfNeeded();
     const caixa = await alvo.boundingBox();
     if (!caixa) throw new Error("camada de marcação sem geometria");
 
+    const janela = page.viewportSize();
+    if (!janela) throw new Error("sem viewport");
+    // A página é mais alta que a janela, então parte dela está sempre fora. Os
+    // dois pontos do arrasto saem da INTERSECÇÃO entre o elemento e a janela —
+    // apenas limitar cada coordenada jogaria o clique no cabeçalho quando o topo
+    // do elemento estivesse acima da área visível.
+    const topoVisivel = Math.max(caixa.y, 0);
+    const baseVisivel = Math.min(caixa.y + caixa.height, janela.height);
+    const alturaVisivel = baseVisivel - topoVisivel;
+    if (alturaVisivel < 60) throw new Error("página visível pequena demais para marcar");
+    const yInicio = topoVisivel + alturaVisivel * 0.25;
+    const yFim = topoVisivel + alturaVisivel * 0.6;
+
     // Retângulo desenhado com o mouse sobre a página.
-    await page.mouse.move(caixa.x + caixa.width * 0.15, caixa.y + caixa.height * 0.7);
+    await page.mouse.move(caixa.x + caixa.width * 0.15, yInicio);
     await page.mouse.down();
-    await page.mouse.move(caixa.x + caixa.width * 0.55, caixa.y + caixa.height * 0.82, {
-      steps: 10,
-    });
+    await page.mouse.move(caixa.x + caixa.width * 0.55, yFim, { steps: 10 });
     await page.mouse.up();
 
     await expect(page.getByTestId("resumo-area")).toContainText("página 2");
