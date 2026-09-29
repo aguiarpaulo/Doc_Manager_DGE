@@ -200,6 +200,49 @@ describe("assinar", () => {
       screen.queryByRole("button", { name: "Assinar documento" }),
     ).not.toBeInTheDocument();
   });
+
+  it("apos assinar, o documento e baixado de novo — o download carimba sob demanda", async () => {
+    // `/versions/{n}/download` carimba a rubrica no PDF na hora da requisicao; o
+    // objeto guardado nunca muda. Sem recarregar depois de assinar, a previa
+    // desta tela continua mostrando o blob de ANTES da assinatura — a rubrica
+    // nova parece nao ter tido efeito nenhum, quando na verdade so a tela nao
+    // foi atualizada.
+    const user = await abrirModal();
+    await user.type(screen.getByLabelText("Senha"), "s3cret-pass");
+
+    vi.mocked(api.listarAssinaturas).mockResolvedValue([ASSINATURA]);
+    vi.mocked(api.listarSolicitacoes).mockResolvedValue([
+      { ...PENDENCIA, status: "assinada", encerrado_em: "2026-08-19T13:45:00Z" },
+    ]);
+    const chamadasAntes = vi.mocked(api.baixarVersao).mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: "Confirmar assinatura" }));
+
+    await waitFor(() => {
+      expect(api.assinarSolicitacao).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(vi.mocked(api.baixarVersao).mock.calls.length).toBeGreaterThan(
+        chamadasAntes,
+      );
+    });
+  });
+});
+
+// --- navegacao --------------------------------------------------------------------------
+
+describe("navegacao", () => {
+  it("oferece um link para voltar ao acervo", async () => {
+    render(<Arvore />);
+    await screen.findByRole("heading", { name: "Assinar documento" });
+
+    // A rota chega por um link de e-mail, fora do shell principal — sem isto a
+    // tela e um beco sem saida.
+    expect(screen.getByRole("link", { name: /voltar ao acervo/i })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
 });
 
 // --- o link do e-mail ------------------------------------------------------------------

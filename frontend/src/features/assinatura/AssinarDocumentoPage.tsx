@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 import { Modal } from "../../components/ui/Modal.tsx";
 import * as api from "../../data/api.ts";
@@ -121,6 +121,11 @@ export function AssinarDocumentoPage() {
       setModalAberto(false);
       solicitacoes.recarregar();
       assinaturas.recarregar();
+      // O download carimba sob demanda — o objeto guardado nunca muda, quem
+      // muda é a resposta de cada requisição. Sem recarregar aqui a prévia
+      // continua mostrando o PDF de antes de assinar, e a rubrica nova parece
+      // não ter tido efeito nenhum.
+      conteudo.recarregar();
     } catch (falha: unknown) {
       setErro(
         falha instanceof ApplicationError
@@ -185,6 +190,9 @@ export function AssinarDocumentoPage() {
   return (
     <main className="assinar">
       <h1>Assinar documento</h1>
+      {/* Esta rota chega pelo link do e-mail, fora do shell com o cabecalho e o
+          seletor de obra — sem este link a tela e um beco sem saida. */}
+      <Link to="/">Voltar ao acervo</Link>
       <p>
         <strong>{atual.nome}</strong> — versão {atual.current_version}
       </p>
