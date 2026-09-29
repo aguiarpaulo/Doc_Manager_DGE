@@ -388,4 +388,51 @@ export function parsePendencia(bruto: unknown): PendenciaAssinatura {
   };
 }
 
+/** Espelha `ObraActivity`: o evento mais recente de um documento da obra. */
+export interface AtividadeObra {
+  readonly action: string;
+  readonly actor_nome: string | null;
+  readonly document_id: string;
+  readonly document_nome: string;
+  readonly created_at: string;
+}
+
+export function parseAtividadeObra(bruto: unknown): AtividadeObra {
+  const r = objeto(bruto, "atividade");
+  return {
+    action: texto(r, "action"),
+    actor_nome: textoOuNulo(r, "actor_nome"),
+    document_id: texto(r, "document_id"),
+    document_nome: texto(r, "document_nome"),
+    created_at: texto(r, "created_at"),
+  };
+}
+
+/** Espelha `ObraSummary`: contagens por status mais a atividade mais recente. */
+export interface ResumoObra {
+  readonly obra: Obra;
+  readonly total_documents: number;
+  readonly by_status: Record<StatusDocumento, number>;
+  readonly latest_activity: AtividadeObra | null;
+}
+
+export function parseResumoObra(bruto: unknown): ResumoObra {
+  const r = objeto(bruto, "resumo");
+  const porStatusBruto = objeto(r["by_status"], "by_status");
+  const porStatus = {} as Record<StatusDocumento, number>;
+  for (const status of STATUS) {
+    porStatus[status] = numero(porStatusBruto, status);
+  }
+  const atividadeBruta = r["latest_activity"];
+
+  return {
+    obra: parseObra(r["obra"]),
+    total_documents: numero(r, "total_documents"),
+    by_status: porStatus,
+    latest_activity: atividadeBruta === null ? null : parseAtividadeObra(atividadeBruta),
+  };
+}
+
+export const parseResumosObras = lista(parseResumoObra);
+
 export const parsePendencias = lista(parsePendencia);

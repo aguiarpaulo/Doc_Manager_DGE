@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDocumento, parseObras, parseUsuario } from "./contracts.ts";
+import { parseDocumento, parseObras, parseResumoObra, parseUsuario } from "./contracts.ts";
 import { ApplicationError } from "./errors.ts";
 
 // O ponto destes testes nao e o caminho feliz: e provar que um payload fora do
@@ -99,5 +99,57 @@ describe("parseObras", () => {
   it("falha se qualquer item da lista estiver fora do contrato", () => {
     const boa = { id: "o-1", nome: "Aurora", descricao: null, is_deleted: false };
     expect(() => parseObras([boa, { id: "o-2" }])).toThrow(/nome/);
+  });
+});
+
+describe("parseResumoObra", () => {
+  const obra = { id: "o-1", nome: "Aurora", descricao: null, is_deleted: false };
+  const atividade = {
+    action: "upload",
+    actor_nome: "ana",
+    document_id: "d-1",
+    document_nome: "Contrato",
+    created_at: "2026-08-15T12:00:00Z",
+  };
+  const valido = {
+    obra,
+    total_documents: 4,
+    by_status: { enviado: 1, em_analise: 1, aprovado: 1, rejeitado: 1 },
+    latest_activity: atividade,
+  };
+
+  it("aceita o payload que a API realmente devolve", () => {
+    expect(parseResumoObra(valido)).toEqual(valido);
+  });
+
+  it("aceita latest_activity nulo quando a obra nao teve atividade", () => {
+    expect(parseResumoObra({ ...valido, latest_activity: null }).latest_activity).toBeNull();
+  });
+
+  it("rejeita by_status com uma contagem ausente", () => {
+    const semStatus = { ...valido, by_status: { enviado: 1, em_analise: 1, aprovado: 1 } };
+    expect(() => parseResumoObra(semStatus)).toThrow(/rejeitado/);
+  });
+
+  it("rejeita by_status com contagem que veio como texto", () => {
+    const contagemTexto = {
+      ...valido,
+      by_status: { ...valido.by_status, aprovado: "1" },
+    };
+    expect(() => parseResumoObra(contagemTexto)).toThrow(/aprovado/);
+  });
+
+  it("rejeita latest_activity sem o nome do documento", () => {
+    const semNome: Record<string, unknown> = { ...atividade };
+    delete semNome["document_nome"];
+    expect(() => parseResumoObra({ ...valido, latest_activity: semNome })).toThrow(
+      /document_nome/,
+    );
+  });
+
+  it("rejeita obra aninhada fora do contrato", () => {
+    expect(() =>
+      parseResumoObra({ ...valido, obra: { id: "o-1" } }),
+    ).toThrow(/nome/);
   });
 });

@@ -10,12 +10,12 @@
  */
 
 import { useCallback, useMemo } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import * as api from "../../data/api.ts";
 import type { Documento, Obra } from "../../data/contracts.ts";
 import { useApiData } from "../../data/useApiData.ts";
-import { useAuth } from "../auth/AuthContext.tsx";
+import { Cabecalho } from "../../components/layout/Cabecalho.tsx";
 import { MinhasPendencias } from "../assinatura/MinhasPendencias.tsx";
 import { FormularioUpload } from "../documentos/FormularioUpload.tsx";
 import { PainelDocumento } from "../documentos/PainelDocumento.tsx";
@@ -38,7 +38,6 @@ function formatarData(iso: string): string {
 export function ObraShell() {
   const { obraId = "", documentoId } = useParams();
   const navigate = useNavigate();
-  const { usuario, sair, ehAdministrador } = useAuth();
 
   const buscarObras = useCallback((signal: AbortSignal) => api.listarObras(signal), []);
   const obras = useApiData<Obra[]>(buscarObras, []);
@@ -64,9 +63,7 @@ export function ObraShell() {
 
   return (
     <div className="shell">
-      <header className="shell__cabecalho">
-        <h1 className="shell__marca">GED DGE</h1>
-
+      <Cabecalho>
         <label htmlFor="seletor-obra">Obra</label>
         <select
           id="seletor-obra"
@@ -82,16 +79,7 @@ export function ObraShell() {
               </option>
             ))}
         </select>
-
-        <span className="shell__identidade">
-          {usuario?.username} ({usuario?.role})
-        </span>
-        <Link to="/perfil/rubrica">Minha rubrica</Link>
-        {ehAdministrador && <Link to="/administracao">Administracao</Link>}
-        <button type="button" onClick={sair}>
-          Sair
-        </button>
-      </header>
+      </Cabecalho>
 
       <div className="shell__corpo">
         <nav className="shell__lista" aria-label="Documentos da obra">

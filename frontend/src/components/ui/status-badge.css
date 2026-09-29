@@ -1,0 +1,25 @@
+/* Somente tokens aqui — nenhuma cor literal (ver frontend/src/styles/index.css). */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.status-badge--enviado {
+  color: var(--color-text-secondary);
+}
+
+.status-badge--em_analise {
+  color: var(--color-warning);
+}
+
+.status-badge--aprovado {
+  color: var(--color-success);
+}
+
+.status-badge--rejeitado {
+  color: var(--color-danger);
+}

@@ -87,7 +87,12 @@ def main():
     print("logado como admin")
 
     # Rubrica do admin, para nao bloquear quem entrar com essa conta.
-    chamar("/me/signature", token=token, metodo="PUT", arquivo=("file", "rubrica.png", PNG_1X1, "image/png"))
+    chamar(
+        "/me/signature",
+        token=token,
+        metodo="PUT",
+        arquivo=("file", "rubrica.png", PNG_1X1, "image/png"),
+    )
     print("rubrica do admin registrada")
 
     criados = []
@@ -171,7 +176,10 @@ def main():
     print(f"solicitacao de assinatura pendente para engenheiro.um em: {obra_alvo['nome']}")
 
     print("\n--- resumo ---")
-    print(f"obras: {len(obras)} | usuarios (alem do admin): {len(criados)} | documentos: {len(obras) * 2}")
+    print(
+        f"obras: {len(obras)} | usuarios (alem do admin): {len(criados)} | "
+        f"documentos: {len(obras) * 2}"
+    )
 
 
 if __name__ == "__main__":

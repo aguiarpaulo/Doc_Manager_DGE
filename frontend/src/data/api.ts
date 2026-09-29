@@ -14,6 +14,7 @@ import {
   parseObra,
   parseObras,
   parsePendencias,
+  parseResumosObras,
   parseRubrica,
   parseSolicitacao,
   parseSolicitacoes,
@@ -27,6 +28,7 @@ import {
   type Etapa,
   type Obra,
   type PendenciaAssinatura,
+  type ResumoObra,
   type Rubrica,
   type SolicitacaoAssinatura,
   type Tokens,
@@ -87,6 +89,15 @@ export function resetPassword(token: string, novaSenha: string): Promise<void> {
 export function listarObras(signal?: AbortSignal, arquivadas = false): Promise<Obra[]> {
   const caminho = arquivadas ? "/obras?arquivadas=true" : "/obras";
   return request(caminho, parseObras, signal ? { signal } : {});
+}
+
+/**
+ * Resumo por obra para o painel inicial: contagens por status e a atividade
+ * mais recente. Ja vem escopado e limitado as 10 obras mais ativas — nada
+ * disto e agregado no cliente.
+ */
+export function resumoObras(signal?: AbortSignal): Promise<ResumoObra[]> {
+  return request("/obras/summary", parseResumosObras, signal ? { signal } : {});
 }
 
 export function criarObra(nome: string, descricao: string): Promise<Obra> {

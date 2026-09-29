@@ -69,7 +69,7 @@ export function AdminPage() {
   if (!ehAdministrador) {
     return (
       <main>
-        <h1>Administracao</h1>
+        <h1>Administração</h1>
         <p role="alert">
           Esta area e restrita a administradores. Seu papel atual e{" "}
           {usuario?.role ?? "desconhecido"}.
@@ -99,7 +99,7 @@ export function AdminPage() {
 
   return (
     <main>
-      <h1>Administracao</h1>
+      <h1>Administração</h1>
       <Link to="/">Voltar ao acervo</Link>
 
       {erro !== null && <p role="alert">{erro}</p>}

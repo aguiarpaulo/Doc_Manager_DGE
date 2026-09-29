@@ -184,7 +184,12 @@ class SMTPEmailSender:
         # already committed; losing the notification is recoverable, losing the
         # request would not be.
         try:
-            with smtplib.SMTP(self.host, self.port) as server:
+            # Without an explicit timeout, `smtplib.SMTP` blocks on the platform's
+            # default (often unbounded) socket timeout when the host silently drops
+            # packets instead of actively refusing the connection — turning a single
+            # unreachable SMTP host into an indefinite hang instead of the
+            # recoverable failure this method's error handling is meant to be.
+            with smtplib.SMTP(self.host, self.port, timeout=10) as server:
                 if self.starttls:
                     server.starttls()
                 # Left conditional on purpose: an SMTP relay authenticated by IP

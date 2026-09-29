@@ -44,7 +44,7 @@ export function LoginPage() {
 
   return (
     <main>
-      <h1>GED DGE</h1>
+      <h1>Gerenciador de Documentos</h1>
       <form
         onSubmit={(evento) => {
           void aoEnviar(evento);
