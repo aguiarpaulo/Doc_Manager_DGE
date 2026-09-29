@@ -11,27 +11,6 @@
   overflow: hidden;
 }
 
-.shell__cabecalho {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border-bottom: var(--border-width) solid var(--color-border);
-}
-
-.shell__marca {
-  margin: 0;
-  font-size: 1.125rem;
-}
-
-.shell__identidade {
-  color: var(--color-text-secondary);
-  font-size: 0.875rem;
-}
-
 .shell__corpo {
   display: grid;
   grid-template-columns: minmax(14rem, 22rem) 1fr;

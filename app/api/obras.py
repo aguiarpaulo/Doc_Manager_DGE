@@ -1,17 +1,28 @@
 """Obra endpoints: admin-managed CRUD, scoped reads, and user<->obra assignment."""
 
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.dependencies import get_current_user, get_db, require_admin
+from app.models.audit import AuditAction, AuditLog
+from app.models.document import Document, DocumentStatus
 from app.models.obra import Obra
 from app.models.user import Role, User
-from app.schemas.obra import ObraCreate, ObraRead, ObraUpdate
+from app.schemas.obra import ObraActivity, ObraCreate, ObraRead, ObraSummary, ObraUpdate
 from app.schemas.user import UserRead
 from app.scope import can_access_obra, scope_obra_query
+
+# Dashboard summaries surface at most this many obras (the busiest ones), never
+# a scroll of everything — production tops out at 10 obras per install.
+MAX_SUMMARY_OBRAS = 10
+
+# Viewing/reading a document is not an update: it must never surface as an
+# obra's "latest activity".
+ACTIVITY_EXCLUDED_ACTIONS = [AuditAction.DOWNLOAD.value, AuditAction.LOGIN.value]
 
 router = APIRouter(prefix="/obras", tags=["obras"])
 
@@ -70,6 +81,110 @@ def list_obras(
         return list(db.execute(select(Obra).where(Obra.is_deleted.is_(True))).scalars().all())
     query = scope_obra_query(select(Obra), current_user)
     return list(db.execute(query).scalars().all())
+
+
+@router.get("/summary", response_model=list[ObraSummary])
+def obras_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[ObraSummary]:
+    """Dashboard aggregate: per accessible obra, document counts and latest activity.
+
+    Registered before `GET /{obra_id}` on purpose — reversing the order would make
+    FastAPI try to parse "summary" as a UUID and 422 before this handler ever runs.
+    """
+    obras = list(db.execute(scope_obra_query(select(Obra), current_user)).scalars().all())
+    if not obras:
+        return []
+    obra_ids = [obra.id for obra in obras]
+
+    by_status: dict[uuid.UUID, dict[str, int]] = {
+        obra.id: dict.fromkeys((s.value for s in DocumentStatus), 0) for obra in obras
+    }
+    totals: dict[uuid.UUID, int] = dict.fromkeys(obra_ids, 0)
+    for obra_id, doc_status, count in db.execute(
+        select(Document.obra_id, Document.status, func.count())
+        .where(Document.obra_id.in_(obra_ids), Document.is_deleted.is_(False))
+        .group_by(Document.obra_id, Document.status)
+    ).all():
+        by_status[obra_id][doc_status.value] = count
+        totals[obra_id] += count
+
+    # One row per obra: the most recent document event, computed in SQL so this
+    # stays a single round trip regardless of how many documents an obra has.
+    ranked = (
+        select(
+            AuditLog.actor_id,
+            AuditLog.action,
+            AuditLog.created_at,
+            Document.obra_id.label("obra_id"),
+            Document.id.label("document_id"),
+            Document.nome.label("document_nome"),
+            func.row_number()
+            .over(partition_by=Document.obra_id, order_by=AuditLog.created_at.desc())
+            .label("rn"),
+        )
+        .select_from(AuditLog)
+        .join(Document, AuditLog.target_id == Document.id)
+        .where(
+            AuditLog.target_type == "document",
+            Document.obra_id.in_(obra_ids),
+            # No is_deleted filter here on purpose: a document's own DELETE audit
+            # row is written in the same transaction that sets is_deleted, so
+            # filtering deleted documents out would erase the delete event itself
+            # from history the instant it becomes true — hiding the one action
+            # most worth surfacing. Counts (above) still exclude deleted documents;
+            # only "what happened" ignores it.
+            AuditLog.action.notin_(ACTIVITY_EXCLUDED_ACTIONS),
+        )
+        .subquery()
+    )
+    latest_rows = db.execute(select(ranked).where(ranked.c.rn == 1)).all()
+
+    # Resolve actor names in one query instead of one per row.
+    actor_ids = {row.actor_id for row in latest_rows if row.actor_id is not None}
+    actor_names: dict[uuid.UUID, str] = {}
+    if actor_ids:
+        actor_names = dict(
+            db.execute(select(User.id, User.username).where(User.id.in_(actor_ids))).all()
+        )
+
+    latest_by_obra: dict[uuid.UUID, ObraActivity] = {
+        row.obra_id: ObraActivity(
+            action=row.action,
+            actor_nome=actor_names.get(row.actor_id) if row.actor_id else None,
+            document_id=row.document_id,
+            document_nome=row.document_nome,
+            created_at=row.created_at,
+        )
+        for row in latest_rows
+    }
+
+    summaries = [
+        ObraSummary(
+            obra=ObraRead.model_validate(obra),
+            total_documents=totals[obra.id],
+            by_status=by_status[obra.id],
+            latest_activity=latest_by_obra.get(obra.id),
+        )
+        for obra in obras
+    ]
+
+    # Most recently active first; obras with no activity at all sort last and are
+    # the first to be dropped once there are more than MAX_SUMMARY_OBRAS. SQLite
+    # (tests) returns naive datetimes even for a timezone-aware column, while
+    # Postgres (production) returns aware ones — normalize before comparing so
+    # sorting never raises on a naive/aware mismatch.
+    epoch = datetime.min.replace(tzinfo=UTC)
+
+    def _sort_key(summary: ObraSummary) -> datetime:
+        if summary.latest_activity is None:
+            return epoch
+        created_at = summary.latest_activity.created_at
+        return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=UTC)
+
+    summaries.sort(key=_sort_key, reverse=True)
+    return summaries[:MAX_SUMMARY_OBRAS]
 
 
 @router.delete("/{obra_id}", status_code=status.HTTP_204_NO_CONTENT)

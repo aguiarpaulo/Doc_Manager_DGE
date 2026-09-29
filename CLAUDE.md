@@ -200,20 +200,53 @@ on screen is not the same as a background refresh with data already visible, and
 `empty` is its own state — a valid response with no items is not a failure. Showing
 one indicator for all three is the antipattern the knowledge base names.
 
-The dashboard reproduces the SEI process screen: an **obra plays the role of a
-process**, its documents are listed in inclusion order (oldest first) on the left,
-and the selected one renders beside the list. Rendering dispatches on the
-`Content-Type` the download endpoint returns, never on the filename. PDFs are drawn by pdfjs,
-never by `<object type="application/pdf">` — that element delegates to a browser
-plugin, and where there is none it silently falls back and shows nothing. The open obra
+`ObraShell` (`frontend/src/features/obras/ObraShell.tsx`) reproduces the SEI process
+screen: an **obra plays the role of a process**, its documents are listed in
+inclusion order (oldest first) on the left, and the selected one renders beside the
+list. Rendering dispatches on the `Content-Type` the download endpoint returns,
+never on the filename. PDFs are drawn by pdfjs, never by
+`<object type="application/pdf">` — that element delegates to a browser plugin, and
+where there is none it silently falls back and shows nothing. The open obra
 and document live in the URL, so the screen is shareable and a refresh restores it.
-`/administracao` only renders for `administrador` — the SPA learns the role from
+It is reached by clicking a card on the home dashboard (below), not by landing
+there directly. `/administracao` only renders for `administrador` — the SPA learns the role from
 `GET /auth/me` because the JWT carries only `sub`/`type`/`iat`/`exp`. That page stays
 reachable with zero obras on purpose: it is where the first one is created, so an
 early return there would deadlock a fresh install. For the same reason the
 user-management and restore-obra blocks do not depend on an obra existing. The
 activate/deactivate control sits outside a `<form>` because its label follows the
 selected user's state.
+
+**`/` is a dashboard, not a redirect.** `GET /obras/summary` (`app/api/obras.py`)
+is registered *before* `GET /{obra_id}` — reversing the order would make FastAPI
+try to parse "summary" as a UUID and 422 before the handler ever runs. For each
+obra `scope_obra_query` grants the caller, it returns document counts by status
+plus the single most recent document-lifecycle audit event, computed as one grouped
+`COUNT` query and one `ROW_NUMBER() OVER (PARTITION BY obra_id ORDER BY
+created_at DESC)` window query — a single round trip regardless of document count,
+instead of N+1 per-obra queries or shipping every audit row for client-side
+aggregation. `download` and `login` are excluded from "latest activity"
+(`ACTIVITY_EXCLUDED_ACTIONS`): viewing a document is not an update, and a login
+has no document to attribute it to. Results sort by latest-activity descending
+(obras with no activity sort last) and are capped at `MAX_SUMMARY_OBRAS = 10` — a
+defensive cap, not pagination, since production is confirmed to never exceed 10
+obras. The frontend's `frontend/src/features/obras/EscolherObra.tsx`, which used to
+auto-redirect to the caller's first obra (or show a bare "no obras yet" message),
+is deleted; `frontend/src/features/dashboard/DashboardPage.tsx` is the new `/`
+route in `frontend/src/App.tsx` and renders `<MinhasPendencias />` (cross-obra
+"awaiting my signature") above a card grid built from `resumoObras()` /
+`ResumoObra` in `frontend/src/data/api.ts` / `contracts.ts` — each card's `StatusBadge`
+(`frontend/src/components/ui/StatusBadge.tsx`) reuses the *already-approved*
+`--color-success`/`--color-warning`/`--color-danger` tokens rather than adding new
+ones, so it needed no changes to the `--color-*` coverage test described below, and
+it is deliberately symbol-plus-text rather than a colored-background pill (WCAG
+1.4.1: color reinforces, it doesn't carry the meaning alone). Clicking a card
+navigates to `/obras/:id`, i.e. `ObraShell` above. `frontend/src/components/layout/Cabecalho.tsx`
+is pulled out of what used to be markup inlined in `ObraShell`'s header — brand
+name, user identity, "Minha rubrica"/"Administração" links, "Sair" — so
+"Gerenciador de Documentos" exists in one place instead of duplicated across every
+screen that needs it; it takes `children` so `ObraShell` can still inject its obra
+`<select>` while the dashboard renders it with none.
 
 **Access token in memory, refresh token in `sessionStorage`.** The access token
 never touches browser storage, so an XSS that reads storage does not find it; the

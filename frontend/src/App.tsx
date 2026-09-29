@@ -17,7 +17,7 @@ import { ForgotPasswordPage } from "./features/auth/ForgotPasswordPage.tsx";
 import { LoginPage } from "./features/auth/LoginPage.tsx";
 import { RedefinirSenhaPage } from "./features/auth/RedefinirSenhaPage.tsx";
 import { RotaProtegida } from "./features/auth/RotaProtegida.tsx";
-import { EscolherObra } from "./features/obras/EscolherObra.tsx";
+import { DashboardPage } from "./features/dashboard/DashboardPage.tsx";
 import { ObraShell } from "./features/obras/ObraShell.tsx";
 import { AssinarDocumentoPage } from "./features/assinatura/AssinarDocumentoPage.tsx";
 import { PerfilRubricaPage } from "./features/rubrica/PerfilRubricaPage.tsx";
@@ -46,7 +46,7 @@ export function Rotas() {
         {/* Tambem fora do guarda: apagar a rubrica nao pode expulsar a pessoa
             da tela onde ela acabou de apagar. */}
         <Route path="/perfil/rubrica" element={<PerfilRubricaPage />} />
-        <Route path="/" element={<EscolherObra />} />
+        <Route path="/" element={<DashboardPage />} />
         {/* A obra e o documento vivem na URL: a tela e compartilhavel e o F5
             restaura exatamente o que estava aberto. */}
         <Route path="/obras/:obraId" element={<ObraShell />} />
