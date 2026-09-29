@@ -49,7 +49,9 @@ docker compose up --build           # full stack: API + Postgres + MinIO + Caddy
 docker compose up postgres minio    # infra only; needs a local override publishing 5432
                                      # plus GED_DATABASE_URL in .env — see README Option B
 npm --prefix frontend install       # SPA deps (Node 24 / npm 11)
-npm --prefix frontend run dev       # dev server on :5173; VITE_API_BASE_URL points at the API
+# Dev server on :5173. It is a different origin from the API, so the API must name
+# it in GED_CORS_ORIGINS or every request dies at the preflight:
+VITE_API_BASE_URL=http://localhost:8080/api npm --prefix frontend run dev
 npm --prefix frontend test          # vitest; needs no services
 npm --prefix frontend run typecheck # tsc --noEmit
 npm --prefix frontend run lint      # eslint
@@ -149,6 +151,15 @@ sends real reset e-mails when `GED_SMTP_HOST` is set, otherwise
 `ConsoleEmailSender` just logs the token for dev; tests swap in
 `InMemoryEmailSender`. Selection lives in `get_email_sender`.
 
+**CORS is off unless someone names an origin.** In production Caddy serves the SPA
+and the API from one origin, so there is no cross-origin call to authorize and
+`GED_CORS_ORIGINS` stays empty. The Vite dev server is the exception — it runs on
+another port, and without naming it there the browser blocks every request at the
+preflight and the login screen reports a network failure. That is not a
+hypothetical: the documented `npm run dev` workflow was unusable until this
+existed. The value is a comma-separated list, trimmed, and an empty entry never
+becomes an origin (which would match a `null` Origin header).
+
 **Config** (`app/config.py`) reads everything from env vars prefixed `GED_`
 (see `.env.example`); nothing is hardcoded, enforced by
 `scripts/check_no_hardcoded_secrets.py`, which scans `docker-compose.yml` *and*
@@ -192,7 +203,9 @@ one indicator for all three is the antipattern the knowledge base names.
 The dashboard reproduces the SEI process screen: an **obra plays the role of a
 process**, its documents are listed in inclusion order (oldest first) on the left,
 and the selected one renders beside the list. Rendering dispatches on the
-`Content-Type` the download endpoint returns, never on the filename. The open obra
+`Content-Type` the download endpoint returns, never on the filename. PDFs are drawn by pdfjs,
+never by `<object type="application/pdf">` — that element delegates to a browser
+plugin, and where there is none it silently falls back and shows nothing. The open obra
 and document live in the URL, so the screen is shareable and a refresh restores it.
 `/administracao` only renders for `administrador` — the SPA learns the role from
 `GET /auth/me` because the JWT carries only `sub`/`type`/`iat`/`exp`. That page stays
@@ -277,6 +290,33 @@ differ in lightness as well as hue so the four document states stay distinguisha
 in greyscale or to a red-green colourblind reader. No literal colour may appear
 outside that file.
 
+**For a viewer, the honest assertion is about what was drawn.** `VisualizadorPdf`
+looked up `canvas[data-pagina=N]` *while the state was still `carregando`* — the
+moment when the component renders only the loading paragraph and no canvas is
+mounted. `containerRef.current` was null, `render()` was never called, and every
+PDF in the app was a blank rectangle. Nothing caught it: the component tests
+stubbed `render` without ever asserting it ran, and the E2E waited for the
+*marking layer*, which exists whether or not the page was painted. Loading is now
+two phases — measure the pages, let the canvases mount, then draw the visible one
+— and the canvas carries `width`/`height` from the measured page so the marking
+layer never changes geometry under the pointer. `frontend/e2e/leitura-de-pdf.spec.ts`
+counts opaque, dark pixels; note that a *transparent* pixel reads as black, so
+counting "non-white" without checking alpha reports a blank canvas as fully inked.
+
+**Rendering only the active page is deliberate**, not an optimisation detail: a
+hundred-page PDF must not cost a hundred renders to show page one. Switching pages
+cancels the in-flight render task, because two concurrent renders on one canvas is
+an error in pdfjs.
+
+**A feature can be fully tested part by part and still not exist.** Password reset
+shipped with an API endpoint, a passing endpoint test, a `resetPassword` function in
+the data boundary, and an e-mail carrying the right link — and no `/redefinir-senha`
+route, so the link landed on "page not found". Every piece had a test; the seam
+between them had none, and no test asks "is this function called by anything?".
+`frontend/e2e/recuperacao-de-senha.spec.ts` now walks it in a browser and asserts the
+part that actually matters: the new password logs in and the old one stops working.
+When wiring a boundary function, check that a screen calls it.
+
 Related lesson recorded in `delivery-graph/demands/DEM-001/evidence/NODE-015/`:
 that node's contract demanded a *manual* smoke, but the evidence filed was pytest
 with the API client mocked. Mocked runs never exercise the types the API validates,
@@ -290,10 +330,12 @@ an invented `POST /documents` contract and only a live-API test exposed it.
 - **Option B (local API + Docker infra) does not work as written.** The `postgres`
   service publishes no host port, and `GED_DATABASE_URL`'s built-in default
   (`ged:ged`) does not match a generated `.env`. Needs a local compose override.
+  Running only the *SPA* locally against the containerised API does work, and is the
+  easier path: `docker-compose.test.yml` already sets `GED_CORS_ORIGINS` for :5173.
 - **No test coverage measurement** (`pytest-cov` not configured).
 - **The browser suite exists but is Chromium-only and started by hand.**
-  `frontend/e2e/` holds two Playwright journeys (signing; refusal + rubric
-  deletion) that run against `docker-compose.test.yml` — Caddy serving the built
+  `frontend/e2e/` holds four Playwright journeys (signing; refusal + rubric
+  deletion; password recovery; PDF actually drawn on screen) that run against `docker-compose.test.yml` — Caddy serving the built
   SPA, FastAPI, PostgreSQL, MinIO and Mailpit, nothing mocked. Bring the stack up
   yourself (`docker compose -f docker-compose.test.yml -p gede2e up -d --build`)
   and run `npx playwright test` from `frontend/`; the config has no `webServer` on
