@@ -416,6 +416,88 @@ uv run python scripts/restore_postgres.py
 
 ---
 
+## Deploy em produção
+
+`.github/workflows/deploy.yml` builda e publica a cada push na `main`: `test` (pytest,
+ruff, lint/typecheck/testes/build do frontend) → `build-and-push` (builda as imagens da
+API e da Web, publica em `ghcr.io/aguiarpaulo/ged-dge-api` e `-web`) → `deploy` (SSH no
+servidor, `docker compose pull` + `up -d`). O servidor nunca builda nada — só puxa as
+imagens já prontas, o que evita competir por CPU/RAM com Postgres e MinIO rodando ao
+lado. Isso funciona com qualquer VM alcançável por SSH: um Droplet da DigitalOcean, uma
+VM Oracle Cloud Always Free, ou qualquer outra.
+
+### Provisionamento do servidor (uma vez só, manual)
+
+1. Instale o Docker Engine + plugin `docker compose` na VM.
+2. Abra as portas 80 e 443 para a internet (e mantenha a 22/SSH restrita a você). Numa
+   VM Oracle, isso exige **duas** liberações — o firewall do próprio SO (`ufw` /
+   `firewalld`) **e** a Security List/Network Security Group do OCI, que por padrão
+   bloqueia tudo além de SSH; esquecer a segunda é o motivo nº 1 de "configurei tudo e
+   não abre no navegador" nesse provedor.
+3. Copie `docker-compose.yml`, `docker-compose.prod.yml` e a pasta `docker/` (só o
+   `Caddyfile` é necessário) para `/opt/ged` na VM. Se você quiser o backup diário
+   automático (seção "Backup diário automático" acima), copie `docker-compose.backup.yml`
+   também — o script de deploy detecta o arquivo e o inclui sozinho; sem ele, o backup
+   simplesmente não roda (e não quebra nada).
+4. Crie `/opt/ged/.env` com os segredos de produção — copie de `.env.example`, gere
+   valores reais para cada `change-me-*` e ajuste `CADDY_DOMAIN` para o domínio real
+   (necessário para o Caddy emitir certificado Let's Encrypt automático).
+5. Aponte o DNS do domínio (registro A) para o IP público da VM.
+6. Suba manualmente uma vez, para validar antes de depender do pipeline:
+   ```bash
+   cd /opt/ged
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+   ```
+   Na primeiríssima vez isso falha: o pipeline ainda não publicou nenhuma imagem em
+   `ghcr.io`. Rode primeiro um push na `main` para o `build-and-push` publicar as
+   imagens, **depois** volte e rode o passo 6.
+7. **GHCR nasce privado.** Depois do primeiro push bem-sucedido, abra
+   `github.com/aguiarpaulo?tab=packages`, entre em cada pacote (`ged-dge-api` e
+   `ged-dge-web`) → Package settings → Change visibility → **Public**. Sem isso o
+   `docker compose pull` do passo 6 (e de todo deploy futuro) falha por falta de
+   autenticação. Essa troca é **irreversível** — não dá para voltar a privado depois.
+   As imagens não carregam segredo nenhum (tudo vem de env var em runtime), então isso
+   é seguro.
+
+### Secrets do GitHub (Settings → Secrets and variables → Actions)
+
+| Secret | Valor |
+|---|---|
+| `DEPLOY_HOST` | IP público da VM |
+| `DEPLOY_USER` | usuário SSH com permissão em `/opt/ged` (ex.: `ubuntu`) |
+| `DEPLOY_SSH_KEY` | chave privada SSH (par dela precisa estar em `~/.ssh/authorized_keys` na VM) |
+
+O acesso ao GHCR usa o `GITHUB_TOKEN` automático do Actions — não precisa criar nada
+para isso.
+
+### Testar de graça no Oracle Cloud Always Free
+
+Antes de gastar dinheiro em produção de verdade, dá pra testar o stack inteiro sem
+custo na VM sempre-grátis da Oracle:
+
+1. Crie uma conta OCI (pede cartão de crédito para verificação, mas o tier Always Free
+   não cobra nada a menos que você faça upgrade).
+2. Crie uma instância **Ampere A1 (ARM)** — o tier grátis atual cobre até 2 OCPU / 12GB
+   RAM, suficiente para os 4 containers deste projeto. Escolha uma imagem Ubuntu.
+3. Siga o provisionamento acima — o passo da Security List (item 2) é ainda mais
+   importante aqui, porque o padrão da Oracle é bloquear tudo.
+4. Todas as imagens Docker usadas (`postgres:16-alpine`, `minio/minio`, `caddy:2-alpine`,
+   `python:3.12-slim`, `node:24-alpine`) já publicam build para ARM64 — não precisa
+   mudar nada no `Dockerfile` ou `docker/Dockerfile.web`.
+5. A Oracle reclama de volta instâncias Always Free que ficam com uso de CPU/rede/
+   memória abaixo de 20% por 7 dias seguidos. Para um ambiente de teste com uso
+   esporádico, isso é um risco real — mitigue com um cron simples que bate no
+   `/health` periodicamente, por exemplo:
+   ```
+   */30 * * * * curl -sf https://SEU_DOMINIO/health > /dev/null
+   ```
+
+Quando decidir ir para produção de verdade, a Always Free vira opcional — o mesmo
+pipeline aponta para qualquer VM só trocando os três secrets acima.
+
+---
+
 ## Variáveis de ambiente
 
 A API lê variáveis com prefixo `GED_` (do arquivo `.env`). Ver `app/config.py`.
