@@ -66,8 +66,10 @@ docker compose -f docker-compose.test.yml -p gede2e down -v   # tear down
 #   GED_LIVE_API=1 GED_LIVE_USER=admin GED_LIVE_PASSWORD=... #   VITE_API_BASE_URL=http://127.0.0.1:8000 npx vitest run src/data/documentos.integration.test.ts
 ```
 
-There is no CI (no `.github/workflows/`) — run `pytest` and `ruff check .`
-manually before committing.
+`.github/workflows/deploy.yml` runs `pytest`, `ruff check .`, and the frontend
+lint/typecheck/test/build on every push to `main` and on every pull request (a
+feature branch with no open PR gets no CI); still run them locally before
+committing — CI is the backstop, not the first check.
 
 ## Architecture
 
@@ -181,6 +183,22 @@ raises and aborts container startup rather than seeding an admin nobody can log 
 exec'd; a CRLF shebang makes the kernel look for `bash\r`. `.gitattributes` pins
 `*.sh eol=lf` and `tests/test_container_build.py` guards it, because the pytest suite
 otherwise never touches the Docker path.
+
+**The server only ever pulls; it never builds — two independent reasons why.**
+`docker-compose.prod.yml` overrides `api`/`web` with pre-built `ghcr.io/...` images,
+but merging it with `docker-compose.yml` does not remove that file's `build:` key —
+Compose keeps both, and only skips the build step because the `deploy` job's remote
+command never passes `--build` (`tests/test_deploy_pipeline.py::test_deploy_command_never_rebuilds_on_the_server`
+is what enforces this). Second, independent guard: `/opt/ged` on the server only ever
+holds the two compose files plus `docker/Caddyfile` (see README) — no `Dockerfile`, no
+`app/`, no `frontend/` — so even a `--build` run by hand there fails loudly (missing
+Dockerfile) instead of silently building stale code. `scripts/check_no_hardcoded_secrets.py`
+scans `docker-compose.yml`, `docker-compose.prod.yml` *and* `docker-compose.backup.yml`,
+but deliberately skips `docker-compose.test.yml` — that file's credentials are throwaway
+and documented in its own header. The deploy script includes `docker-compose.backup.yml`
+in its `-f` flags only when that file is present on the server (i.e. only if the optional
+backup overlay was opted into) — otherwise `--remove-orphans` would kill the long-running
+`backup` container every deploy, since it isn't declared in the deploy's own file set.
 
 **The SPA** (`frontend/`) is a thin client with no business logic of its own.
 Every HTTP call goes through the single transport in `src/data/http.ts` — the only
