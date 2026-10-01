@@ -147,7 +147,9 @@ def test_restoring_an_obra_gives_back_its_documents_and_its_assignments(
     _document_in(client, admin_h, obra_id)
     client.delete(f"/obras/{obra_id}", headers=admin_h)
 
-    assert client.post(f"/obras/{obra_id}/restore", headers=admin_h).status_code == 200
+    restaurada = client.post(f"/obras/{obra_id}/restore", headers=admin_h)
+    assert restaurada.status_code == 200
+    assert restaurada.json()["is_deleted"] is False
 
     assert [o["id"] for o in client.get("/obras", headers=admin_h).json()] == [obra_id]
     assert len(client.get("/documents", headers=admin_h).json()) == 1
@@ -167,7 +169,7 @@ def test_archived_obras_are_listed_only_on_demand_and_only_for_admin(
 
     # Without this an archived obra is unreachable and "reversible" would be a lie.
     arquivadas = client.get("/obras", headers=admin_h, params={"arquivadas": True}).json()
-    assert [o["id"] for o in arquivadas] == [obra_id]
+    assert [(o["id"], o["is_deleted"]) for o in arquivadas] == [(obra_id, True)]
 
     dir_h = headers_for("dir@example.com")
     assert client.get("/obras", headers=dir_h, params={"arquivadas": True}).status_code == 403

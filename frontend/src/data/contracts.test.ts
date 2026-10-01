@@ -100,6 +100,13 @@ describe("parseObras", () => {
     const boa = { id: "o-1", nome: "Aurora", descricao: null, is_deleted: false };
     expect(() => parseObras([boa, { id: "o-2" }])).toThrow(/nome/);
   });
+
+  it("falha quando a obra nao informa se esta arquivada", () => {
+    // Supor "ativa" esvaziava a lista de arquivadas sem nenhum erro visivel.
+    expect(() => parseObras([{ id: "o-1", nome: "Aurora", descricao: null }])).toThrow(
+      /is_deleted/,
+    );
+  });
 });
 
 describe("parseResumoObra", () => {

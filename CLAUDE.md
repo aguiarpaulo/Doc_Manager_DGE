@@ -103,6 +103,9 @@ Conversely `documents.obra_id` *does* cascade, so a real `DELETE` on an obra wou
 silently take its documents with it and orphan the MinIO objects, which nothing
 cleans up; obras are archived (`is_deleted`) instead. `GET /obras?arquivadas=true`
 is admin-only and exists solely so an archived obra stays reachable for restore.
+`ObraRead` (`app/schemas/obra.py`) emits `is_deleted`, and the SPA's restore block
+(`frontend/src/features/admin/AdminPage.tsx`) filters on it — so archiving there must
+reload *both* the active and the archived lists, or "Restaurar" never appears.
 
 **An administrator cannot reduce their own privileges** (`app/api/users.py`):
 self-deactivation and stripping one's own administrator role both 403. Acting on a
@@ -206,6 +209,11 @@ module allowed to touch the network, enforced by an ESLint `no-restricted-global
 rule that fails the build when a component calls `fetch` outside `src/data/`.
 Responses are validated at runtime by the parsers in `src/data/contracts.ts`,
 because a TypeScript interface validates nothing about received JSON.
+Use the strict field helpers there (`texto`, `booleano`, ...): a parser that
+*defaults* a missing field hides a field the backend never sends. `parseObra` once
+defaulted `is_deleted` to `false` while `ObraRead` did not emit it, so the archived-obras
+list was silently always empty. The lenient defaults that remain (`has_signature`,
+`token_type`) are for fields the backend always emits.
 
 **The UI never inspects HTTP status.** It branches on `ApplicationError.category`
 (`autenticacao`, `autorizacao`, `validacao`, `conflito`, `nao-encontrado`,

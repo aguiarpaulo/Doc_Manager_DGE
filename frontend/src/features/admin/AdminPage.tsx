@@ -114,7 +114,12 @@ export function AdminPage() {
 
       {/* Renderizado antes de qualquer guarda por obra: e aqui que a primeira
           obra de uma instalacao nova e criada. */}
-      <BlocoObras obras={obras} ocupado={ocupado} executar={executar} />
+      <BlocoObras
+        obras={obras}
+        arquivadas={arquivadas}
+        ocupado={ocupado}
+        executar={executar}
+      />
 
       <BlocoAcessos usuarios={usuarios} obras={obras} ocupado={ocupado} executar={executar} />
 
@@ -310,10 +315,12 @@ function BlocoUsuarios({
 
 function BlocoObras({
   obras,
+  arquivadas,
   ocupado,
   executar,
 }: {
   obras: ReturnType<typeof useApiData<Obra[]>>;
+  arquivadas: ReturnType<typeof useApiData<Obra[]>>;
   ocupado: boolean;
   executar: Executar;
 }) {
@@ -373,6 +380,7 @@ function BlocoObras({
                 onClick={() => {
                   void executar(() => api.arquivarObra(o.id), () => {
                     obras.recarregar();
+                    arquivadas.recarregar();
                   });
                 }}
               >

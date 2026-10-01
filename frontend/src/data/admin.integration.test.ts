@@ -105,7 +105,10 @@ describe.runIf(ativo)("regras administrativas contra a API real", () => {
 
     // GET /obras?arquivadas=true existe para a obra arquivada seguir alcancavel.
     const comArquivadas = await api.listarObras(undefined, true);
-    expect(comArquivadas.some((o) => o.id === obra.id)).toBe(true);
+    // O contrato de Obra informa o arquivamento; a listagem de arquivadas deve dize-lo.
+    const arquivada = comArquivadas.find((o) => o.id === obra.id);
+    expect(arquivada).toBeDefined();
+    expect(arquivada?.is_deleted).toBe(true);
 
     const restaurada = await api.restaurarObra(obra.id);
     expect(restaurada.is_deleted).toBe(false);
