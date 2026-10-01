@@ -22,6 +22,7 @@ class ObraRead(BaseModel):
     id: uuid.UUID
     nome: str
     descricao: str | None = None
+    is_deleted: bool
 
 
 class ObraActivity(BaseModel):

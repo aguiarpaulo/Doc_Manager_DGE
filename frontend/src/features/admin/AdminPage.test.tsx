@@ -55,7 +55,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   vi.mocked(api.listarUsuarios).mockResolvedValue([ADMIN, ENGENHEIRO]);
   vi.mocked(api.listarObras).mockImplementation((_s?: AbortSignal, arquivadas = false) =>
-    Promise.resolve(arquivadas ? [OBRA, ARQUIVADA] : [OBRA]),
+    Promise.resolve(arquivadas ? [ARQUIVADA] : [OBRA]),
   );
 });
 
@@ -288,5 +288,29 @@ describe("criacao de usuario", () => {
 
     const campo = await screen.findByLabelText("Usuario", { selector: "#novo-username" });
     expect(campo).toHaveAccessibleDescription(/3 a 32 caracteres/);
+  });
+});
+
+describe("arquivamento de obra", () => {
+  it("a obra arquivada passa a constar entre as arquivadas sem recarregar a pagina", async () => {
+    comSessao(ADMIN);
+    let arquivada = false;
+    vi.mocked(api.listarObras).mockImplementation((_s?: AbortSignal, soArquivadas = false) => {
+      const aurora: Obra = { ...OBRA, is_deleted: arquivada };
+      if (soArquivadas) return Promise.resolve(arquivada ? [aurora] : []);
+      return Promise.resolve(arquivada ? [] : [aurora]);
+    });
+    vi.mocked(api.arquivarObra).mockImplementation(() => {
+      arquivada = true;
+      return Promise.resolve();
+    });
+    render(<Arvore />);
+
+    const blocoArquivadas = await screen.findByRole("region", { name: "Obras arquivadas" });
+    await userEvent.setup().click(await screen.findByRole("button", { name: "Arquivar Aurora" }));
+
+    expect(
+      await within(blocoArquivadas).findByRole("button", { name: "Restaurar Aurora" }),
+    ).toBeInTheDocument();
   });
 });

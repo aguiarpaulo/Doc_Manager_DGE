@@ -214,7 +214,7 @@ export function parseObra(bruto: unknown): Obra {
     id: texto(r, "id"),
     nome: texto(r, "nome"),
     descricao: textoOuNulo(r, "descricao"),
-    is_deleted: typeof r["is_deleted"] === "boolean" ? r["is_deleted"] : false,
+    is_deleted: booleano(r, "is_deleted"),
   };
 }
 
