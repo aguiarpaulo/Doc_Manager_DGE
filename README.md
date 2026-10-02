@@ -516,6 +516,13 @@ A API lê variáveis com prefixo `GED_` (do arquivo `.env`). Ver `app/config.py`
 | `GED_BOOTSTRAP_ADMIN_EMAIL`    | E-mail do administrador inicial | (vazio — pula o bootstrap)              |
 | `GED_BOOTSTRAP_ADMIN_PASSWORD` | Senha do administrador inicial (mín. 12 caracteres) | (vazio)   |
 | `GED_CORS_ORIGINS`     | Origens liberadas para chamar a API de outro endereço, separadas por vírgula | (vazio — nenhuma) |
+| `GED_SMTP_HOST`        | Servidor SMTP (ex.: `smtp.gmail.com`)  | (vazio — modo console: o token vai para o log) |
+| `GED_SMTP_PORT`        | Porta SMTP                             | `587`                                             |
+| `GED_SMTP_STARTTLS`    | Usar STARTTLS (`true`/`false`)         | `true`                                            |
+| `GED_SMTP_USER`        | Usuário SMTP                           | (vazio)                                           |
+| `GED_SMTP_PASSWORD`    | Senha SMTP (no Gmail, a senha de app)  | (vazio)                                           |
+| `GED_SMTP_FROM`        | Remetente — com `GED_SMTP_HOST`, obrigatório se `GED_SMTP_USER` estiver vazio | (vazio) |
+| `GED_APP_URL_BASE`     | URL pública usada nos links dos e-mails — obrigatória com `GED_SMTP_HOST` | (vazio) |
 
 `GED_MINIO_ACCESS_KEY` e `GED_MINIO_SECRET_KEY` são o **único** par de nomes para a
 credencial do MinIO: o compose entrega esses valores ao servidor MinIO como credencial
@@ -525,6 +532,29 @@ duas variáveis. Não existem mais `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` — s
 qual variável falta.
 
 O `docker-compose.yml` também usa `POSTGRES_*` e `CADDY_DOMAIN` (ver `.env.example`).
+
+**O `.env` só chega à API pelo que está listado em `services.api.environment`** no
+`docker-compose.yml` — não há `env_file:`. Uma variável nova em `app/config.py` precisa
+ser acrescentada ali também, senão é ignorada em silêncio no container;
+`tests/test_compose_api_env.py` falha (e bloqueia o deploy no CI) quando alguém esquece.
+
+### E-mail pelo Gmail
+
+1. Ative a verificação em duas etapas na conta Google e crie uma **senha de app** em
+   <https://myaccount.google.com/apppasswords>. A senha normal da conta é recusada.
+2. No `.env` do servidor, preencha o bloco SMTP do `.env.example` com `smtp.gmail.com`,
+   porta `587`, a senha de app, `GED_SMTP_FROM` igual à própria conta Gmail e
+   `GED_APP_URL_BASE` com a URL pública.
+3. Na Oracle Cloud a porta 25 de saída é bloqueada; a 587 sai pela regra padrão.
+   Confira na VM com `nc -vz smtp.gmail.com 587`.
+
+**Testar o envio real localmente:** crie `docker-compose.local.yml` (está no
+`.gitignore` — nunca versione, ele carrega a senha) sobrescrevendo `GED_SMTP_*` do
+serviço `api`, e suba o stack local com ele por cima do de teste:
+
+```powershell
+docker compose -f docker-compose.test.yml -f docker-compose.local.yml -p gedlocal up -d --build
+```
 
 ---
 
