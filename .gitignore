@@ -225,3 +225,7 @@ frontend/bundle-report.html
 
 # Git worktrees
 .worktrees/
+
+# Override local com credenciais reais (ex.: SMTP do Gmail para testar o envio de
+# e-mail no stack local). Nunca versionar: carrega a senha de app.
+docker-compose.local.yml

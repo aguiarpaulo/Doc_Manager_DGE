@@ -169,7 +169,14 @@ becomes an origin (which would match a `null` Origin header).
 (see `.env.example`); nothing is hardcoded, enforced by
 `scripts/check_no_hardcoded_secrets.py`, which scans `docker-compose.yml` *and*
 `scripts/` — the host-side scripts run against a live deployment, so a credential
-baked into one of them authenticates against nothing. `GED_MINIO_ACCESS_KEY` /
+baked into one of them authenticates against nothing. **`services.api.environment` in `docker-compose.yml` is a whitelist** — there is no
+`env_file:`, so a setting present in the server's `.env` but not named there silently
+keeps its code default inside the container. SMTP shipped that way: production would
+have logged reset tokens instead of e-mailing them, with no error.
+`tests/test_compose_api_env.py` resolves the compose interpolation into the real
+`Settings` and fails when a field is neither passed through nor exempted with a
+reason. Defaults there must parse (`${GED_SMTP_PORT:-587}`, not an empty `:-`), or an install
+without e-mail crashes at startup. `GED_MINIO_ACCESS_KEY` /
 `GED_MINIO_SECRET_KEY` are the single naming for the MinIO credential: compose hands
 them to the MinIO server as its root user, and every client reads the same two names.
 
