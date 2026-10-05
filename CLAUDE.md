@@ -210,6 +210,22 @@ in its `-f` flags only when that file is present on the server (i.e. only if the
 backup overlay was opted into) — otherwise `--remove-orphans` would kill the long-running
 `backup` container every deploy, since it isn't declared in the deploy's own file set.
 
+**In production only Caddy (`web`) publishes host ports.** `docker-compose.yml` publishes
+`api` 8000 and `minio` 9000/9001 for local dev, and Compose *appends* `ports` across `-f`
+files, so `docker-compose.prod.yml` can only remove them with `ports: !reset []`,
+which needs Compose 2.24.4 or newer on the server. Left published, api:8000 accepted
+logins over plain HTTP around Caddy's TLS and 9001 served the MinIO console behind root credentials — and a host
+firewall does not help, because Docker DNATs published ports before the INPUT chain.
+Caddy→api and api→minio use the compose network. `tests/test_deploy_pipeline.py` parses
+compose with a `SafeLoader` subclass that knows `!reset` (`yaml.safe_load` rejects the tag),
+and `test_production_publishes_host_ports_only_through_caddy` takes the file list from the
+deploy job's `-f` flags, emulates the merge, and counts `network_mode: host` as exposure.
+The deploy job never refreshes the compose files in `/opt/ged`, so a change to them must be
+copied to the server by hand. A Compose without `!reset` support may silently ignore the tag and keep
+the ports published, so the README's provisioning step checks `docker ps` after the first up;
+the server's `.env` sets `COMPOSE_FILE` so manual `docker compose` commands there use the
+same file set as the deploy instead of re-publishing the dev ports.
+
 **The SPA** (`frontend/`) is a thin client with no business logic of its own.
 Every HTTP call goes through the single transport in `src/data/http.ts` — the only
 module allowed to touch the network, enforced by an ESLint `no-restricted-globals`
