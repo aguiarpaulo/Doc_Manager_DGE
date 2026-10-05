@@ -7,12 +7,54 @@ tests guard the pipeline's shape and safety properties, not any one host's speci
 """
 
 import pathlib
+import re
 
 import yaml
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "deploy.yml"
 PROD_COMPOSE_PATH = REPO_ROOT / "docker-compose.prod.yml"
+
+
+class _Reset:
+    """Compose's `!reset` tag: the attribute is dropped instead of merged."""
+
+
+class _ComposeLoader(yaml.SafeLoader):
+    pass
+
+
+_ComposeLoader.add_constructor("!reset", lambda loader, node: _Reset())
+
+
+def _load_compose(path: pathlib.Path) -> dict:
+    return yaml.load(path.read_text(encoding="utf-8"), Loader=_ComposeLoader)
+
+
+def _deploy_compose_paths() -> list[pathlib.Path]:
+    """Every file the deploy script may pass with -f, optional overlays included as if
+    present, in the order the script first names them."""
+    script = _ssh_step()["with"]["script"]
+    names = dict.fromkeys(re.findall(r"-f\s+(\S+\.ya?ml)", script))
+    return [REPO_ROOT / name for name in names]
+
+
+def _host_exposure_in_production() -> dict[str, list]:
+    """What each service opens on the host once the deploy's compose files are merged.
+
+    Compose appends `ports` lists across files, so an override can only add ports;
+    `!reset` is the one way a later file removes what an earlier one published.
+    Host networking needs no `ports:` at all to bind on the host, so it counts too.
+    """
+    exposure: dict[str, list] = {}
+    for path in _deploy_compose_paths():
+        for name, service in _load_compose(path)["services"].items():
+            declared = service.get("ports", [])
+            merged = exposure.get(name, [])
+            exposure[name] = [] if isinstance(declared, _Reset) else merged + declared
+            if service.get("network_mode") == "host":
+                exposure[name] = [*exposure[name], "network_mode: host"]
+    return exposure
 
 
 def _load_workflow() -> dict:
@@ -51,9 +93,7 @@ def test_deploy_only_runs_after_build_which_only_runs_after_test():
         raw = jobs[job_name].get("needs", [])
         return {raw} if isinstance(raw, str) else set(raw)
 
-    assert "test" in needs("build-and-push"), (
-        "build-and-push does not wait on the test job"
-    )
+    assert "test" in needs("build-and-push"), "build-and-push does not wait on the test job"
     assert "build-and-push" in needs("deploy"), "deploy does not wait on build-and-push"
 
 
@@ -96,7 +136,7 @@ def test_production_compose_publishes_pullable_images():
     the server build locally again (see test_deploy_command_never_rebuilds_on_the_server
     for why that matters).
     """
-    compose = yaml.safe_load(PROD_COMPOSE_PATH.read_text(encoding="utf-8"))
+    compose = _load_compose(PROD_COMPOSE_PATH)
 
     services = compose["services"]
 
@@ -119,7 +159,7 @@ def test_compose_images_match_what_the_workflow_publishes():
     the way a typo'd ghcr.io path might.
     """
     env = _load_workflow()["env"]
-    compose = yaml.safe_load(PROD_COMPOSE_PATH.read_text(encoding="utf-8"))
+    compose = _load_compose(PROD_COMPOSE_PATH)
     services = compose["services"]
 
     assert services["api"]["image"] == f"{env['API_IMAGE']}:latest"
@@ -141,3 +181,16 @@ def test_deploy_command_never_rebuilds_on_the_server():
     assert "--build" not in _ssh_step()["with"]["script"], (
         "deploy script must never pass --build to compose"
     )
+
+
+def test_production_publishes_host_ports_only_through_caddy():
+    """Caddy (`web`) is the only door: it terminates TLS and proxies /api internally.
+
+    A published api:8000 would accept logins in plain HTTP around Caddy, and a
+    published minio:9001 exposes the storage console with root credentials. The OS
+    firewall does not stop either, because Docker-published ports are routed in the
+    nat table before the host's INPUT rules ever see them.
+    """
+    exposed = {name: opened for name, opened in _host_exposure_in_production().items() if opened}
+
+    assert set(exposed) == {"web"}, f"services publishing host ports in production: {exposed}"

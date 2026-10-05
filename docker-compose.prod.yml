@@ -4,8 +4,17 @@ services:
   # CPU/RAM on a small box. Combine with the base file:
   #   docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
   #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+  #
+  # Caddy (`web`) is the only service reachable from outside: it terminates TLS and
+  # proxies /api to api:8000 over the compose network. The base file publishes the API
+  # and MinIO ports for local development; `!reset` drops them here (Compose appends
+  # `ports` across files, so a plain override could only add). Needs Compose >= 2.24.4.
   api:
     image: ghcr.io/aguiarpaulo/ged-dge-api:latest
+    ports: !reset []
+
+  minio:
+    ports: !reset []
 
   web:
     image: ghcr.io/aguiarpaulo/ged-dge-web:latest

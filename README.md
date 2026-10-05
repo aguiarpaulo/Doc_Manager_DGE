@@ -118,7 +118,7 @@ docker compose -f docker-compose.yml -f docker-compose.backup.yml up -d
 Útil no dia a dia de desenvolvimento (recarrega o código sozinho).
 
 > **Atenção — não funciona direto.** O serviço `postgres` do `docker-compose.yml` não
-> publica a porta 5432 no host (só o MinIO publica 9000/9001), de propósito: o compose é
+> publica a porta 5432 no host (publicam a API em 8000, o MinIO em 9000/9001 e o Caddy em 80/443), de propósito: o compose é
 > o arquivo de deploy e expor o banco não é o padrão desejável em produção. Rodando a
 > API na sua máquina, o passo 2 abaixo dá timeout de conexão. Para usar a Opção B você
 > precisa, **localmente**, publicar a porta e apontar a URL do banco:
@@ -428,20 +428,43 @@ VM Oracle Cloud Always Free, ou qualquer outra.
 
 ### Provisionamento do servidor (uma vez só, manual)
 
-1. Instale o Docker Engine + plugin `docker compose` na VM.
-2. Abra as portas 80 e 443 para a internet (e mantenha a 22/SSH restrita a você). Numa
-   VM Oracle, isso exige **duas** liberações — o firewall do próprio SO (`ufw` /
-   `firewalld`) **e** a Security List/Network Security Group do OCI, que por padrão
-   bloqueia tudo além de SSH; esquecer a segunda é o motivo nº 1 de "configurei tudo e
+1. Abra as portas 80 e 443 para a internet (e mantenha a 22/SSH restrita a você). Numa
+   VM Oracle, quem decide isso é a Security List/Network Security Group do OCI, que por
+   padrão bloqueia tudo além de SSH — esquecê-la é o motivo nº 1 de "configurei tudo e
    não abre no navegador" nesse provedor.
+
+   O firewall do SO **não** entra nessa conta: o Docker redireciona as portas que publica
+   na tabela `nat`, antes de o tráfego chegar às regras de `INPUT` do `iptables` (ou do
+   `ufw`). Isso vale nos dois sentidos — não é preciso liberar 80/443 no `iptables` para
+   o Caddy funcionar, e o firewall do SO também **não protege** nenhuma porta publicada
+   por container. Por isso o `docker-compose.prod.yml` remove (`ports: !reset []`) as
+   portas que o compose base publica para desenvolvimento (API 8000, MinIO 9000/9001):
+   em produção só o Caddy (80/443) fica exposto. API e MinIO continuam falando entre si
+   pela rede interna do compose; o console do MinIO não fica acessível de fora.
+
+   Nas imagens Ubuntu da Oracle, **não use `ufw`**: a Oracle documenta que ele pode
+   apagar as regras de acesso ao volume de boot (iSCSI), e a instância não volta do
+   reboot. Se algum dia precisar mexer no firewall do SO, edite `/etc/iptables/rules.v4`.
+2. Instale o Docker Engine + plugin `docker compose` na VM (por exemplo
+   `curl -fsSL https://get.docker.com | sh`, depois `sudo usermod -aG docker ubuntu` e
+   um novo login). O compose precisa ser **2.24.4 ou mais novo** (`docker compose
+   version`): uma versão sem suporte a `!reset` pode ignorar a tag em silêncio e manter
+   as portas da API e do MinIO publicadas. O passo 6 confere isso.
 3. Copie `docker-compose.yml`, `docker-compose.prod.yml` e a pasta `docker/` (só o
    `Caddyfile` é necessário) para `/opt/ged` na VM. Se você quiser o backup diário
    automático (seção "Backup diário automático" acima), copie `docker-compose.backup.yml`
    também — o script de deploy detecta o arquivo e o inclui sozinho; sem ele, o backup
-   simplesmente não roda (e não quebra nada).
+   simplesmente não roda (e não quebra nada). **O pipeline não atualiza esses arquivos**
+   — ele só puxa imagens. Quando algum deles mudar no repositório, copie de novo à mão.
 4. Crie `/opt/ged/.env` com os segredos de produção — copie de `.env.example`, gere
    valores reais para cada `change-me-*` e ajuste `CADDY_DOMAIN` para o domínio real
-   (necessário para o Caddy emitir certificado Let's Encrypt automático).
+   (necessário para o Caddy emitir certificado Let's Encrypt automático). Acrescente
+   também `COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml` (mais
+   `:docker-compose.backup.yml` se você copiou o backup): o compose lê essa variável do
+   `.env`, então qualquer `docker compose ...` digitado à mão em `/opt/ged` — inclusive o
+   de `scripts/smoke_minio_persistence.py` — usa o mesmo conjunto de arquivos do deploy.
+   Sem ela, um `docker compose up -d minio` manual lê só o arquivo base e reabre as
+   portas 9000/9001.
 5. Aponte o DNS do domínio (registro A) para o IP público da VM.
 6. Suba manualmente uma vez, para validar antes de depender do pipeline:
    ```bash
@@ -451,7 +474,12 @@ VM Oracle Cloud Always Free, ou qualquer outra.
    ```
    Na primeiríssima vez isso falha: o pipeline ainda não publicou nenhuma imagem em
    `ghcr.io`. Rode primeiro um push na `main` para o `build-and-push` publicar as
-   imagens, **depois** volte e rode o passo 6.
+   imagens, **depois** volte e rode o passo 6. Para conferir, `https://SEU_DOMINIO/api/health`
+   deve responder `"status":"ok"` — e `scripts/smoke_health.py`, se rodado contra o
+   servidor, precisa de `GED_SMOKE_URL=https://SEU_DOMINIO/api/health`, porque o padrão
+   dele (`localhost:8000`) não existe em produção. Confira também que só o Caddy está
+   exposto — `docker ps --format '{{.Names}} {{.Ports}}'` deve mostrar `0.0.0.0` apenas
+   nas portas 80 e 443 do `web`.
 7. **GHCR nasce privado.** Depois do primeiro push bem-sucedido, abra
    `github.com/aguiarpaulo?tab=packages`, entre em cada pacote (`ged-dge-api` e
    `ged-dge-web`) → Package settings → Change visibility → **Public**. Sem isso o
@@ -480,18 +508,26 @@ custo na VM sempre-grátis da Oracle:
    não cobra nada a menos que você faça upgrade).
 2. Crie uma instância **Ampere A1 (ARM)** — o tier grátis atual cobre até 2 OCPU / 12GB
    RAM, suficiente para os 4 containers deste projeto. Escolha uma imagem Ubuntu.
-3. Siga o provisionamento acima — o passo da Security List (item 2) é ainda mais
-   importante aqui, porque o padrão da Oracle é bloquear tudo.
+3. Siga o provisionamento acima — o passo do firewall (item 1) é ainda mais importante
+   aqui, porque o padrão da Oracle é bloquear tudo.
 4. Todas as imagens Docker usadas (`postgres:16-alpine`, `minio/minio`, `caddy:2-alpine`,
    `python:3.12-slim`, `node:24-alpine`) já publicam build para ARM64 — não precisa
    mudar nada no `Dockerfile` ou `docker/Dockerfile.web`.
-5. A Oracle reclama de volta instâncias Always Free que ficam com uso de CPU/rede/
-   memória abaixo de 20% por 7 dias seguidos. Para um ambiente de teste com uso
-   esporádico, isso é um risco real — mitigue com um cron simples que bate no
-   `/health` periodicamente, por exemplo:
-   ```
-   */30 * * * * curl -sf https://SEU_DOMINIO/health > /dev/null
-   ```
+5. A Oracle pode recuperar instâncias Always Free ociosas. Pela [documentação
+   oficial](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm),
+   ociosa é quando, num período de 7 dias, **todas** estas condições valem: CPU (percentil
+   95) abaixo de 20%, rede abaixo de 20% e — só no A1 — memória abaixo de 20%. Este stack
+   tende a usar bem menos de 20% dos 12 GB, então com pouco uso ele **é** ocioso por
+   essa definição. Um cron batendo no `/health` não resolve: uma requisição a cada meia hora
+   não move nenhuma das três métricas. As saídas reais são uso de verdade, ou fazer
+   upgrade da conta para Pay As You Go — os recursos Always Free continuam sem custo, e
+   a comunidade relata que contas PAYG não sofrem essa recuperação, mas a doc oficial
+   atual **não** diz isso explicitamente. Se fizer o upgrade, crie um Budget com alerta
+   (ex.: US$ 1) para ser avisado de qualquer cobrança acima do gratuito.
+6. A [documentação oficial](https://docs.oracle.com/iaas/Content/FreeTier/freetier.htm)
+   hoje fixa o A1 Always Free em 2 OCPU / 12 GB no total (já foi 4 / 24), e diz que, se a
+   tenancy passar disso, todas as instâncias A1 são desativadas. Crie a VM dentro de
+   2/12. A instância só pode ser criada na *home region* escolhida no cadastro.
 
 Quando decidir ir para produção de verdade, a Always Free vira opcional — o mesmo
 pipeline aponta para qualquer VM só trocando os três secrets acima.
